@@ -226,10 +226,9 @@
                   <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
                   <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
                   {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
-                  {@const linked = linkedBeats(ev.id)}
-                  {#if linked.length > 0}
+                  {#if linkedBeats(ev.id).length > 0}
                     <div class="tl-plot-badges">
-                      {#each linked as beat}
+                      {#each linkedBeats(ev.id) as beat}
                         <span class="tl-plot-badge">📋 {beat.title || '（タイトル未設定）'}</span>
                       {/each}
                     </div>

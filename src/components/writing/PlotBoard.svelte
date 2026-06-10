@@ -217,7 +217,7 @@
           onclick={() => showTemplateMenu = !showTemplateMenu}
         >テンプレート ▾</button>
         {#if showTemplateMenu}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
           <div class="pb-backdrop" onclick={() => showTemplateMenu = false}></div>
           <div class="pb-tmpl-menu">
             {#each Object.entries(TEMPLATES) as [key, tmpl]}
@@ -269,8 +269,9 @@
                   rows="3"
                 ></textarea>
                 <div class="pb-tl-row">
-                  <label class="pb-tl-label">タイムライン連携</label>
+                  <label class="pb-tl-label" for="tl-select-{beat.id}">タイムライン連携</label>
                   <select
+                    id="tl-select-{beat.id}"
                     class="fi pb-select"
                     value={beat.timelineEventId ?? ''}
                     onchange={(e) => updateBeat(beat.id, { timelineEventId: (e.target as HTMLSelectElement).value || null })}

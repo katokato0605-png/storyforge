@@ -109,6 +109,7 @@
       <input
         bind:this={inputEl}
         class="fi code-input"
+        value={code}
         oninput={handleInput}
         oncompositionstart={() => isComposing = true}
         oncompositionend={handleCompositionEnd}

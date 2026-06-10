@@ -1,12 +1,11 @@
 <script lang="ts">
   import { appStore } from '../../lib/stores/appStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
-  import { exportAll, downloadJSON, importFromJSON, readFileAsText } from '../../lib/utils/exportImport'
+  import { exportAll } from '../../lib/utils/exportImport'
   import { createBackup } from '../../lib/utils/backup'
   import { isFSASupported, fsaStore, enableFileMode, disableFileMode, tryRestoreHandle, writeAutoSave } from '../../lib/utils/fileSystemAccess.svelte'
   import { onMount } from 'svelte'
 
-  let importInput: HTMLInputElement | undefined
   const fsaSupported = isFSASupported()
 
   onMount(async () => {
@@ -34,41 +33,6 @@
     toastMsg = msg
     toastErr = err
     toastTimer = setTimeout(() => toastMsg = '', 3000)
-  }
-
-  async function handleExport() {
-    try {
-      const json = await exportAll()
-      downloadJSON(json)
-      showToast('エクスポートしました')
-    } catch (e) {
-      showToast('エクスポートに失敗しました', true)
-    }
-  }
-
-  function handleImportClick() {
-    importInput?.click()
-  }
-
-  async function handleImportFile(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    if (!file) return
-    appStore.openModal('confirm', {
-      title: 'データをインポート',
-      message: '既存のデータとマージされます（同じIDのデータは上書き）。続けますか？',
-      confirmLabel: 'インポート',
-      onConfirm: async () => {
-        try {
-          const text = await readFileAsText(file)
-          const { projects, chapters } = await importFromJSON(text)
-          await projectStore.load()
-          showToast(`${projects}作品・${chapters}章をインポートしました`)
-        } catch (err) {
-          showToast((err as Error).message || 'インポートに失敗しました', true)
-        }
-      },
-    })
-    ;(e.target as HTMLInputElement).value = ''
   }
 
   async function handleBackup() {
@@ -118,22 +82,11 @@
     {/if}
     <button class="iBtn" onclick={() => appStore.openModal('sync')} title="デバイス間同期" aria-label="同期">🔄</button>
     <button class="iBtn" onclick={handleBackup} title="バックアップ作成" aria-label="バックアップ">💾</button>
-    <button class="iBtn" onclick={handleExport} title="JSONエクスポート" aria-label="エクスポート">📤</button>
-    <button class="iBtn" onclick={handleImportClick} title="JSONインポート" aria-label="インポート">📥</button>
     <button class="iBtn" onclick={toggleTheme} title="テーマ切替" aria-label="テーマ切替">
       {appStore.theme === 'dark' ? '☀' : '🌙'}
     </button>
   </div>
 </header>
-
-<input
-  bind:this={importInput}
-  type="file"
-  accept=".json"
-  style="display:none"
-  onchange={handleImportFile}
-  aria-hidden="true"
-/>
 
 {#if toastMsg}
   <div id="toast" class="show" class:err={toastErr}>{toastMsg}</div>

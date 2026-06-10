@@ -1,7 +1,6 @@
 <script lang="ts">
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
-  import { noteStore } from '../../lib/stores/noteStore.svelte'
   import IdeaVaultTab from '../tabs/IdeaVaultTab.svelte'
   import type { Project } from '../../lib/db/schema'
 
@@ -11,17 +10,11 @@
   let editTarget = $state<Project | null>(null)
   let formTitle = $state('')
   let formDesc = $state('')
-  let formTab = $state<'basic' | 'terms' | 'characters'>('basic')
-  let formTerms = $state('')
-  let formChars = $state('')
 
   function openCreate() {
     editTarget = null
     formTitle = ''
     formDesc = ''
-    formTerms = ''
-    formChars = ''
-    formTab = 'basic'
     showForm = true
   }
 
@@ -30,7 +23,6 @@
     editTarget = p
     formTitle = p.title
     formDesc = p.description
-    formTab = 'basic'
     showForm = true
   }
 
@@ -39,9 +31,7 @@
     if (editTarget) {
       await projectStore.updateProject(editTarget.id, { title: formTitle.trim(), description: formDesc.trim() })
     } else {
-      const project = await projectStore.createProject(formTitle.trim(), formDesc.trim())
-      if (formTerms.trim()) await noteStore.save(project.id, 'lore', formTerms.trim())
-      if (formChars.trim()) await noteStore.save(project.id, 'character', formChars.trim())
+      await projectStore.createProject(formTitle.trim(), formDesc.trim())
     }
     showForm = false
   }
@@ -83,7 +73,6 @@
           <div class="empty-icon">📖</div>
           <div class="empty-msg">まだ作品がありません</div>
           <div class="empty-sub">「新しい作品」ボタンから始めましょう</div>
-          <button class="btn btn-primary" onclick={openCreate}>＋ 新しい作品を作る</button>
         </div>
       {:else}
         <div class="works-grid">
@@ -117,34 +106,14 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => { if (e.key === 'Escape') { showForm = false; return } e.stopPropagation() }}>
       <div class="modal-title">{editTarget ? '作品を編集' : '新しい作品'}</div>
 
-      {#if !editTarget}
-        <div class="form-tabs">
-          <button class="form-tab" class:active={formTab === 'basic'} onclick={() => formTab = 'basic'}>基本情報</button>
-          <button class="form-tab" class:active={formTab === 'terms'} onclick={() => formTab = 'terms'}>用語</button>
-          <button class="form-tab" class:active={formTab === 'characters'} onclick={() => formTab = 'characters'}>登場人物</button>
-        </div>
-      {/if}
-
-      {#if formTab === 'basic'}
-        <div class="fg">
-          <label class="fl" for="proj-title">タイトル</label>
-          <input id="proj-title" class="fi" bind:value={formTitle} placeholder="作品タイトル" />
-        </div>
-        <div class="fg">
-          <label class="fl" for="proj-desc">説明（任意）</label>
-          <textarea id="proj-desc" class="fta" bind:value={formDesc} placeholder="あらすじ・メモなど"></textarea>
-        </div>
-      {:else if formTab === 'terms'}
-        <div class="fg">
-          <label class="fl" for="proj-terms">用語・設定</label>
-          <textarea id="proj-terms" class="fta fta-lg" bind:value={formTerms} placeholder="世界観の用語、設定、ルールなど"></textarea>
-        </div>
-      {:else if formTab === 'characters'}
-        <div class="fg">
-          <label class="fl" for="proj-chars">登場人物</label>
-          <textarea id="proj-chars" class="fta fta-lg" bind:value={formChars} placeholder="登場人物の名前、特徴、関係など"></textarea>
-        </div>
-      {/if}
+      <div class="fg">
+        <label class="fl" for="proj-title">タイトル</label>
+        <input id="proj-title" class="fi" bind:value={formTitle} placeholder="作品タイトル" />
+      </div>
+      <div class="fg">
+        <label class="fl" for="proj-desc">説明（任意）</label>
+        <textarea id="proj-desc" class="fta" bind:value={formDesc} placeholder="あらすじ・メモなど"></textarea>
+      </div>
 
       <div class="modal-acts">
         <button class="btn btn-ghost" onclick={() => showForm = false}>キャンセル</button>
@@ -181,10 +150,4 @@
   .modal-title{font-size:16px;font-weight:700;margin-bottom:14px}
   .modal-acts{display:flex;gap:7px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
 
-  .form-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--surface2);border-radius:8px;padding:3px}
-  .form-tab{flex:1;background:none;border:none;padding:6px 0;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:.15s;font-family:inherit}
-  .form-tab:hover{color:var(--text)}
-  .form-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px var(--shadow)}
-
-  .fta-lg{min-height:160px}
 </style>

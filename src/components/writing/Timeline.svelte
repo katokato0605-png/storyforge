@@ -17,6 +17,14 @@
     events: TimelineEvent[]
   }
 
+  interface PlotBeat {
+    id: string
+    stage: string
+    title: string
+    description: string
+    timelineEventId: string | null
+  }
+
   const COLORS = ['#7c6af7', '#e09020', '#4caf50', '#e05555', '#2196f3', '#e91e8c']
 
   let events = $state<TimelineEvent[]>([])
@@ -133,6 +141,22 @@
     events = arr
     save(arr)
   }
+
+  let plotBeats = $derived.by((): PlotBeat[] => {
+    try {
+      const raw = noteStore.getContent('plot')
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      if (parsed?.version === 1 && Array.isArray(parsed.beats)) return parsed.beats
+      return []
+    } catch {
+      return []
+    }
+  })
+
+  function linkedBeats(eventId: string): PlotBeat[] {
+    return plotBeats.filter(b => b.timelineEventId === eventId)
+  }
 </script>
 
 {#if !loaded}
@@ -202,6 +226,14 @@
                   <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
                   <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
                   {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
+                  {@const linked = linkedBeats(ev.id)}
+                  {#if linked.length > 0}
+                    <div class="tl-plot-badges">
+                      {#each linked as beat}
+                        <span class="tl-plot-badge">📋 {beat.title || '（タイトル未設定）'}</span>
+                      {/each}
+                    </div>
+                  {/if}
                 </button>
                 <div class="tl-view-acts">
                   <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
@@ -259,4 +291,7 @@
 
   .tl-add-btn { margin-top: 8px; margin-left: 32px; background: none; border: 1px dashed var(--border); color: var(--muted); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: .15s; width: calc(100% - 32px) }
   .tl-add-btn:hover { border-color: var(--accent); color: var(--accent) }
+
+  .tl-plot-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px }
+  .tl-plot-badge { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 2px 8px; border-radius: 20px }
 </style>

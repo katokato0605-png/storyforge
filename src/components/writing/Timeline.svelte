@@ -1,5 +1,7 @@
 <script lang="ts">
   import { noteStore } from '../../lib/stores/noteStore.svelte'
+  import { createHistory } from '../../lib/utils/history.svelte'
+  import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import { nanoid } from 'nanoid'
 
   let { projectId }: { projectId: string } = $props()
@@ -33,9 +35,41 @@
   let loaded = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
 
+  const hist = createHistory<TimelineEvent[]>()
+
+  function undo() {
+    const prev = hist.undo(events.map(e => ({ ...e })))
+    if (!prev) return
+    events = prev
+    editingId = null
+    editSnapshot = null
+    save(prev)
+  }
+
+  function redo() {
+    const next = hist.redo(events.map(e => ({ ...e })))
+    if (!next) return
+    events = next
+    editingId = null
+    editSnapshot = null
+    save(next)
+  }
+
+  $effect(() => {
+    function handleKeydown(e: KeyboardEvent) {
+      const ctrl = e.ctrlKey || e.metaKey
+      if (!ctrl) return
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo() }
+    }
+    document.addEventListener('keydown', handleKeydown)
+    return () => document.removeEventListener('keydown', handleKeydown)
+  })
+
   $effect(() => {
     const pid = projectId
     loaded = false
+    hist.reset()
     let cancelled = false
     noteStore.load(pid).then(() => {
       if (cancelled) return
@@ -74,6 +108,7 @@
   }
 
   function addEvent() {
+    hist.push(events.map(e => ({ ...e })))
     const e: TimelineEvent = {
       id: nanoid(),
       label: '',
@@ -113,12 +148,17 @@
 
   function confirmEdit() {
     clearTimeout(saveTimer)
+    if (editSnapshot && editingId) {
+      const pre = events.map(e => e.id === editingId ? editSnapshot! : e)
+      hist.push(pre)
+    }
     save(events)
     editingId = null
     editSnapshot = null
   }
 
   function deleteEvent(id: string) {
+    hist.push(events.map(e => ({ ...e })))
     const next = events.filter(e => e.id !== id)
     events = next
     editingId = null
@@ -128,6 +168,7 @@
 
   function moveUp(idx: number) {
     if (idx === 0) return
+    hist.push(events.map(e => ({ ...e })))
     const arr = [...events]
     ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
     events = arr
@@ -136,6 +177,7 @@
 
   function moveDown(idx: number) {
     if (idx === events.length - 1) return
+    hist.push(events.map(e => ({ ...e })))
     const arr = [...events]
     ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
     events = arr
@@ -169,6 +211,9 @@
   </div>
 {:else}
   <div class="tl-wrap">
+    <div class="tl-toolbar">
+      <UndoRedoButtons canUndo={hist.canUndo} canRedo={hist.canRedo} onUndo={undo} onRedo={redo} />
+    </div>
     <div class="tl-list">
       {#each events as ev, idx (ev.id)}
         <div class="tl-row">
@@ -256,6 +301,7 @@
   .tl-empty-msg { font-size: 14px }
 
   .tl-wrap { padding: 16px 20px 80px; max-width: 640px; margin: 0 auto }
+  .tl-toolbar { margin-bottom: 12px }
   .tl-list { display: flex; flex-direction: column }
 
   .tl-row { display: flex; gap: 12px; align-items: flex-start }

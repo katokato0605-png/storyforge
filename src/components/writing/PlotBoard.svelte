@@ -1,5 +1,7 @@
 <script lang="ts">
   import { noteStore } from '../../lib/stores/noteStore.svelte'
+  import { createHistory } from '../../lib/utils/history.svelte'
+  import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import { nanoid } from 'nanoid'
 
   let { projectId }: { projectId: string } = $props()
@@ -66,21 +68,11 @@
   let showTemplateMenu = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
 
-  // undo/redo
-  let history = $state<PlotBeat[][]>([])
-  let future = $state<PlotBeat[][]>([])
-  const MAX_HISTORY = 50
-
-  function pushHistory(snapshot: PlotBeat[]) {
-    history = [...history.slice(-(MAX_HISTORY - 1)), snapshot.map(b => ({ ...b }))]
-    future = []
-  }
+  const hist = createHistory<PlotBeat[]>()
 
   function undo() {
-    if (history.length === 0) return
-    future = [beats.map(b => ({ ...b })), ...future]
-    const prev = history[history.length - 1]
-    history = history.slice(0, -1)
+    const prev = hist.undo(beats.map(b => ({ ...b })))
+    if (!prev) return
     beats = prev
     editingId = null
     editSnapshot = null
@@ -88,10 +80,8 @@
   }
 
   function redo() {
-    if (future.length === 0) return
-    history = [...history, beats.map(b => ({ ...b }))]
-    const next = future[0]
-    future = future.slice(1)
+    const next = hist.redo(beats.map(b => ({ ...b })))
+    if (!next) return
     beats = next
     editingId = null
     editSnapshot = null
@@ -112,8 +102,7 @@
   $effect(() => {
     const pid = projectId
     loaded = false
-    history = []
-    future = []
+    hist.reset()
     let cancelled = false
     noteStore.load(pid).then(() => {
       if (cancelled) return
@@ -165,7 +154,7 @@
   }
 
   function addBeat() {
-    pushHistory(beats)
+    hist.push(beats.map(b => ({ ...b })))
     const beat: PlotBeat = { id: nanoid(), stage: '', title: '', description: '', timelineEventId: null }
     const next = [...beats, beat]
     beats = next
@@ -199,10 +188,9 @@
 
   function confirmEdit() {
     clearTimeout(saveTimer)
-    // editSnapshot = state before editing; push it as the undoable checkpoint
     if (editSnapshot && editingId) {
       const pre = beats.map(b => b.id === editingId ? editSnapshot! : b)
-      pushHistory(pre)
+      hist.push(pre)
     }
     save(beats)
     editingId = null
@@ -210,7 +198,7 @@
   }
 
   function deleteBeat(id: string) {
-    pushHistory(beats)
+    hist.push(beats.map(b => ({ ...b })))
     const next = beats.filter(b => b.id !== id)
     beats = next
     editingId = null
@@ -220,7 +208,7 @@
 
   function moveUp(idx: number) {
     if (idx === 0) return
-    pushHistory(beats)
+    hist.push(beats.map(b => ({ ...b })))
     const arr = [...beats]
     ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
     beats = arr
@@ -229,7 +217,7 @@
 
   function moveDown(idx: number) {
     if (idx === beats.length - 1) return
-    pushHistory(beats)
+    hist.push(beats.map(b => ({ ...b })))
     const arr = [...beats]
     ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
     beats = arr
@@ -239,7 +227,7 @@
   function applyTemplate(key: keyof typeof TEMPLATES) {
     showTemplateMenu = false
     if (beats.length > 0 && !confirm('既存のビートをテンプレートで上書きしますか？')) return
-    pushHistory(beats)
+    hist.push(beats.map(b => ({ ...b })))
     const newBeats: PlotBeat[] = TEMPLATES[key].beats.map(b => ({
       id: nanoid(),
       stage: b.stage,
@@ -265,22 +253,7 @@
 {:else}
   <div class="pb-wrap">
     <div class="pb-toolbar">
-      <div class="pb-history-acts">
-        <button
-          class="pb-hist-btn"
-          onclick={undo}
-          disabled={history.length === 0}
-          title="元に戻す (Ctrl+Z)"
-          aria-label="元に戻す"
-        >↩</button>
-        <button
-          class="pb-hist-btn"
-          onclick={redo}
-          disabled={future.length === 0}
-          title="やり直す (Ctrl+Y)"
-          aria-label="やり直す"
-        >↪</button>
-      </div>
+      <UndoRedoButtons canUndo={hist.canUndo} canRedo={hist.canRedo} onUndo={undo} onRedo={redo} />
       <button class="btn btn-primary btn-sm" onclick={addBeat}>＋ ビートを追加</button>
       <div class="pb-tmpl-wrap">
         <button
@@ -384,10 +357,6 @@
   .pb-wrap { padding: 16px 20px 80px; max-width: 640px; margin: 0 auto }
 
   .pb-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px }
-  .pb-history-acts { display: flex; gap: 2px; margin-right: 4px }
-  .pb-hist-btn { background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text); padding: 4px 8px; font-size: 15px; min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; transition: .15s }
-  .pb-hist-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent) }
-  .pb-hist-btn:disabled { opacity: .3; cursor: default }
 
   .pb-tmpl-wrap { position: relative }
   .pb-backdrop { position: fixed; inset: 0; z-index: 10 }

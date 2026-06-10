@@ -36,8 +36,9 @@
         if (raw) {
           const parsed = JSON.parse(raw)
           if (Array.isArray(parsed)) {
-            // legacy: migrate from bare array (version < 1)
+            // legacy: migrate from bare array (version < 1) → save v1 format immediately
             events = parsed
+            save(parsed)
           } else if (parsed?.version === 1 && Array.isArray(parsed.events)) {
             events = parsed.events
           } else {

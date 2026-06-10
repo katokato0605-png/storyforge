@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { chapterStore } from '../../lib/stores/chapterStore.svelte'
   import InputToolbar from './InputToolbar.svelte'
   import WordCounter from './WordCounter.svelte'
@@ -17,13 +17,17 @@
   let focusMode = $state(false)
   let destroyed = false
 
-  // 章切替時にコンテンツをロード（chapters配列への依存を最小化）
+  // chapterId の変化のみを追跡してロード。chapters 配列への依存を untrack で遮断し
+  // 保存後の chapters 更新で入力中コンテンツが上書きされるバグを防ぐ。
   $effect(() => {
-    const chapter = chapterStore.chapters.find(c => c.id === chapterId)
-    if (chapter) {
-      content = chapter.content
-      title = chapter.title
-    }
+    const id = chapterId
+    untrack(() => {
+      const chapter = chapterStore.chapters.find(c => c.id === id)
+      if (chapter) {
+        content = chapter.content
+        title = chapter.title
+      }
+    })
   })
 
   // ツールバーへのref設定（章ロードとは独立したeffect）

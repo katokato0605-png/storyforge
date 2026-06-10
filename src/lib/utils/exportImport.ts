@@ -17,7 +17,7 @@ const ChapterSchema = v.object({
   title: v.string(),
   content: v.string(),
   plotMemo: v.string(),
-  status: v.picklist(['draft', 'writing', 'review', 'done']),
+  status: v.picklist(['draft', 'writing', 'review', 'done'] as const),
   order: v.number(),
   wordCount: v.number(),
   createdAt: v.number(),
@@ -27,7 +27,7 @@ const ChapterSchema = v.object({
 const ProjectNoteSchema = v.object({
   id: v.string(),
   projectId: v.string(),
-  type: v.picklist(['plot', 'character', 'world', 'memo', 'lore', 'timeline']),
+  type: v.picklist(['plot', 'character', 'world', 'memo', 'lore', 'timeline'] as const),
   content: v.string(),
   updatedAt: v.number(),
 })

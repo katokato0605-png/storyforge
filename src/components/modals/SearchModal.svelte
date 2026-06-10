@@ -36,7 +36,7 @@
   }
 
   async function replaceInOne(chapterId: string) {
-    if (!replacement && replacement !== '') return
+    if (!query.trim()) return
     const ch = await db.chapters.get(chapterId)
     if (!ch) return
     const { content, count } = replaceInContent(ch.content, query, replacement)

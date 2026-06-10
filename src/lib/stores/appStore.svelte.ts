@@ -1,7 +1,7 @@
-export type TabId = 'writing' | 'plot' | 'timeline' | 'lore' | 'ideas'
+export type TabId = 'plot' | 'timeline' | 'lore' | 'ideas'
 export type Theme = 'dark' | 'light'
 
-let activeTab = $state<TabId>('writing')
+let activeTab = $state<TabId>('plot')
 let theme = $state<Theme>('dark')
 let activeModal = $state<string | null>(null)
 let modalProps = $state<unknown>(null)

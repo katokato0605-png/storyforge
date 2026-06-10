@@ -2,7 +2,6 @@
   import { appStore, type TabId } from '../../lib/stores/appStore.svelte'
 
   const tabs: { id: TabId; icon: string; label: string }[] = [
-    { id: 'writing',  icon: '✏️', label: '執筆' },
     { id: 'plot',     icon: '📋', label: 'プロット' },
     { id: 'timeline', icon: '🕐', label: 'タイムライン' },
     { id: 'lore',     icon: '📖', label: '設定' },

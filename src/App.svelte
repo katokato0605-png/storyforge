@@ -4,7 +4,6 @@
   import MainLayout from './components/layout/MainLayout.svelte'
   import HomeView from './components/home/HomeView.svelte'
   import ModalHost from './components/modals/ModalHost.svelte'
-  import WritingTab from './components/tabs/WritingTab.svelte'
   import PlotTab from './components/tabs/PlotTab.svelte'
   import TimelineTab from './components/tabs/TimelineTab.svelte'
   import LoreTab from './components/tabs/LoreTab.svelte'
@@ -44,9 +43,7 @@
     {/snippet}
 
     {#snippet children()}
-      {#if appStore.activeTab === 'writing'}
-        <WritingTab />
-      {:else if appStore.activeTab === 'plot'}
+      {#if appStore.activeTab === 'plot'}
         <PlotTab />
       {:else if appStore.activeTab === 'timeline'}
         <TimelineTab />

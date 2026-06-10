@@ -6,7 +6,6 @@
   let drawerOpen = $state(false)
 
   const tabs: { id: TabId; icon: string; label: string }[] = [
-    { id: 'writing',  icon: '✏️', label: '執筆' },
     { id: 'plot',     icon: '📋', label: 'プロット' },
     { id: 'timeline', icon: '🕐', label: 'タイム' },
     { id: 'lore',     icon: '📖', label: '設定' },

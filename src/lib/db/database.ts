@@ -1,0 +1,25 @@
+import Dexie, { type EntityTable } from 'dexie'
+import type { Project, Chapter, ProjectNote, Idea, BackupEntry, Meta } from './schema'
+
+class StoryForgeDB extends Dexie {
+  projects!: EntityTable<Project, 'id'>
+  chapters!: EntityTable<Chapter, 'id'>
+  projectNotes!: EntityTable<ProjectNote, 'id'>
+  ideas!: EntityTable<Idea, 'id'>
+  backups!: EntityTable<BackupEntry, 'id'>
+  meta!: EntityTable<Meta, 'key'>
+
+  constructor() {
+    super('StoryForge')
+    this.version(1).stores({
+      projects:     'id, updatedAt',
+      chapters:     'id, projectId, order, updatedAt',
+      projectNotes: 'id, projectId, type, updatedAt',
+      ideas:        'id, *tags, linkedProjectId, createdAt',
+      backups:      'id, generation, createdAt',
+      meta:         'key',
+    })
+  }
+}
+
+export const db = new StoryForgeDB()

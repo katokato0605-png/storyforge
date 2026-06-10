@@ -8,7 +8,6 @@
   import PlotTab from './components/tabs/PlotTab.svelte'
   import TimelineTab from './components/tabs/TimelineTab.svelte'
   import LoreTab from './components/tabs/LoreTab.svelte'
-  import CharacterTab from './components/tabs/CharacterTab.svelte'
   import IdeaVaultTab from './components/tabs/IdeaVaultTab.svelte'
   import { appStore } from './lib/stores/appStore.svelte'
   import { projectStore } from './lib/stores/projectStore.svelte'
@@ -53,8 +52,6 @@
         <TimelineTab />
       {:else if appStore.activeTab === 'lore'}
         <LoreTab />
-      {:else if appStore.activeTab === 'character'}
-        <CharacterTab />
       {:else if appStore.activeTab === 'ideas'}
         <IdeaVaultTab />
       {:else}

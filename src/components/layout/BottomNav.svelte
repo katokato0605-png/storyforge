@@ -80,8 +80,8 @@
         <span class="bn-icon">☰</span>
         <span class="bn-lbl">章</span>
       </button>
-      <button class="bn-tab bn-ch-plus" onclick={addChapter} aria-label="章を追加">
-        <span class="bn-icon">＋</span>
+      <button class="bn-tab bn-ch-plus" onclick={() => projectStore.selectProject(null)} aria-label="ホームに戻る">
+        <span class="bn-icon">🏠</span>
       </button>
     </div>
   {/if}

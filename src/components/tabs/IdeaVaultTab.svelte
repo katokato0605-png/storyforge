@@ -4,11 +4,59 @@
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
 
+  const TEMPLATE = `オリジナル作品の作り方
+①メディアは?(ゲーム? アニメ? 漫画? 実写?)
+
+
+②ジャンルは? (アクション? ADV? RPG?)
+
+
+③ターゲットは?
+
+
+④設定を考える(どこで? 誰が? 何をする?)
+
+
+⑤面白かった作品を参照する
+
+
+⑥「これ作りたい! ワクワクする!」まで辿り着く
+
+
+⑦システムやプロットやキャラクターなどの深掘りへ…`
+
   let filterLinked = $state(false)
   let filterTag = $state('')
   let newContent = $state('')
   let newTags = $state('')
   let adding = $state(false)
+
+  let editId = $state<string | null>(null)
+  let editContent = $state('')
+  let editTags = $state('')
+
+  function startEdit(idea: { id: string; content: string; tags: string[] }) {
+    editId = idea.id
+    editContent = idea.content
+    editTags = idea.tags.join(', ')
+  }
+
+  async function saveEdit() {
+    if (!editId || !editContent.trim()) return
+    const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    await ideaStore.update(editId, { content: editContent.trim(), tags })
+    editId = null
+  }
+
+  function handleEditKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit()
+    if (e.key === 'Escape') editId = null
+  }
+
+  function useTemplate() {
+    newContent = TEMPLATE
+    adding = true
+  }
 
   onMount(() => ideaStore.load())
 
@@ -67,6 +115,7 @@
           この作品のみ
         </label>
       {/if}
+      <button class="btn btn-ghost btn-sm" onclick={useTemplate}>📋 テンプレ</button>
       <button class="btn btn-primary btn-sm" onclick={() => adding = !adding}>
         {adding ? 'キャンセル' : '＋ 追加'}
       </button>
@@ -109,31 +158,56 @@
     {:else}
       {#each filtered as idea (idea.id)}
         <div class="idea-card">
-          <div class="idea-body">
-            <p class="idea-text">{idea.content}</p>
-            {#if idea.tags.length > 0}
-              <div class="tags">
-                {#each idea.tags as tag}
-                  <button
-                    class="tag tag-btn"
-                    onclick={() => filterTag = filterTag === tag ? '' : tag}
-                  >{tag}</button>
-                {/each}
+          {#if editId === idea.id}
+            <div class="edit-form">
+              <textarea
+                class="fta"
+                value={editContent}
+                oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
+                onkeydown={handleEditKeydown}
+                rows="6"
+                aria-label="アイデアを編集"
+              ></textarea>
+              <div class="add-row">
+                <input
+                  class="fi"
+                  value={editTags}
+                  oninput={(e) => editTags = (e.target as HTMLInputElement).value}
+                  placeholder="タグ（カンマ区切り）"
+                  aria-label="タグ"
+                />
+                <button class="btn btn-ghost btn-sm" onclick={() => editId = null}>キャンセル</button>
+                <button class="btn btn-primary btn-sm" onclick={saveEdit}>保存</button>
               </div>
-            {/if}
-          </div>
-          <div class="idea-actions">
-            {#if projectStore.currentProjectId}
-              <button
-                class="iBtn"
-                class:linked={idea.linkedProjectId === projectStore.currentProjectId}
-                title={idea.linkedProjectId === projectStore.currentProjectId ? 'この作品からリンク解除' : 'この作品にリンク'}
-                onclick={() => linkToggle(idea.id, idea.linkedProjectId === projectStore.currentProjectId)}
-                aria-label="作品リンク"
-              >🔗</button>
-            {/if}
-            <button class="iBtn del" onclick={() => confirmDelete(idea.id)} aria-label="削除">✕</button>
-          </div>
+            </div>
+          {:else}
+            <div class="idea-body">
+              <p class="idea-text">{idea.content}</p>
+              {#if idea.tags.length > 0}
+                <div class="tags">
+                  {#each idea.tags as tag}
+                    <button
+                      class="tag tag-btn"
+                      onclick={() => filterTag = filterTag === tag ? '' : tag}
+                    >{tag}</button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+            <div class="idea-actions">
+              <button class="iBtn" onclick={() => startEdit(idea)} aria-label="編集">✎</button>
+              {#if projectStore.currentProjectId}
+                <button
+                  class="iBtn"
+                  class:linked={idea.linkedProjectId === projectStore.currentProjectId}
+                  title={idea.linkedProjectId === projectStore.currentProjectId ? 'この作品からリンク解除' : 'この作品にリンク'}
+                  onclick={() => linkToggle(idea.id, idea.linkedProjectId === projectStore.currentProjectId)}
+                  aria-label="作品リンク"
+                >🔗</button>
+              {/if}
+              <button class="iBtn del" onclick={() => confirmDelete(idea.id)} aria-label="削除">✕</button>
+            </div>
+          {/if}
         </div>
       {/each}
     {/if}
@@ -156,6 +230,8 @@
   .idea-body   { flex: 1; min-width: 0 }
   .idea-text   { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; margin-bottom: 6px }
   .idea-actions{ display: flex; flex-direction: column; gap: 5px; flex-shrink: 0 }
+  .edit-form   { flex: 1; min-width: 0 }
+  .edit-form .fta { margin-bottom: 8px }
   .iBtn.linked { color: var(--accent); border-color: var(--accent) }
   .tag-btn     { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
   .tag-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent) }

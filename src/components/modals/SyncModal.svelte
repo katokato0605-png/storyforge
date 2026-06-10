@@ -1,6 +1,9 @@
 <script lang="ts">
   import { appStore } from '../../lib/stores/appStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
+  import { chapterStore } from '../../lib/stores/chapterStore.svelte'
+  import { noteStore } from '../../lib/stores/noteStore.svelte'
+  import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import Modal from './Modal.svelte'
   import { isConfigured, generateCode, pushSync, pullSync } from '../../lib/utils/sync'
 
@@ -15,8 +18,9 @@
   let code = $state(getStoredCode())
   let status = $state<'idle' | 'pushing' | 'pulling' | 'ok' | 'error'>('idle')
   let message = $state('')
+  let confirmingPull = $state(false)
   let isComposing = false
-  let inputEl: HTMLInputElement
+  let inputEl = $state<HTMLInputElement | undefined>(undefined)
 
   function applyFilter(raw: string): string {
     return raw.toUpperCase().replace(VALID_CHARS, '').slice(0, 6)
@@ -62,14 +66,25 @@
     }
   }
 
-  async function handlePull() {
+  function handlePull() {
     if (!code || code.length !== 6) { message = '6文字のコードを入力してください'; status = 'error'; return }
-    if (!window.confirm('現在のデータが上書きされます。続けますか？')) return
+    confirmingPull = true
+  }
+
+  async function executePull() {
+    confirmingPull = false
     status = 'pulling'
     message = ''
     try {
       const { projects, chapters } = await pullSync(code)
       await projectStore.load()
+      const pid = projectStore.currentProjectId
+      if (pid) {
+        await chapterStore.load(pid)
+        noteStore.invalidate()
+        await noteStore.load(pid)
+      }
+      await ideaStore.reload()
       status = 'ok'
       message = `ダウンロード完了！${projects}作品・${chapters}章を取得しました`
     } catch (e) {
@@ -109,6 +124,16 @@
       <button class="btn btn-ghost btn-sm" onclick={handleGenerate}>生成</button>
     </div>
 
+    {#if confirmingPull}
+      <div class="confirm-box">
+        <p class="confirm-msg">現在のデータが上書きされます。この操作は取り消せません。</p>
+        <div class="confirm-acts">
+          <button class="btn btn-ghost btn-sm" onclick={() => confirmingPull = false}>キャンセル</button>
+          <button class="btn btn-danger btn-sm" onclick={executePull}>上書きする</button>
+        </div>
+      </div>
+    {/if}
+
     {#if status === 'ok'}
       <div class="msg ok">{message}</div>
     {:else if status === 'error'}
@@ -131,7 +156,7 @@
         <button
           class="btn btn-primary"
           onclick={handlePull}
-          disabled={status === 'pushing' || status === 'pulling' || code.length !== 6}
+          disabled={status === 'pushing' || status === 'pulling' || code.length !== 6 || confirmingPull}
         >📥 ダウンロード</button>
       </div>
     </div>
@@ -156,5 +181,8 @@
   .msg.loading  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border) }
   .warn-box     { background: #3a2a0a; border: 1px solid #5a4a1a; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.8; margin-bottom: 14px }
   .warn-box code{ background: var(--surface2); padding: 2px 5px; border-radius: 3px; font-size: 12px }
+  .confirm-box  { background: var(--surface2); border: 1px solid var(--danger); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px }
+  .confirm-msg  { font-size: 13px; color: var(--text); margin-bottom: 10px; line-height: 1.5 }
+  .confirm-acts { display: flex; justify-content: flex-end; gap: 8px }
   .modal-footer { display: flex; justify-content: flex-end }
 </style>

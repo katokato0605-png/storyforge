@@ -50,8 +50,9 @@ export const chapterStore = {
   },
 
   async updateTitle(id: string, title: string) {
-    await db.chapters.update(id, { title, updatedAt: Date.now() })
-    chapters = chapters.map(c => c.id === id ? { ...c, title, updatedAt: Date.now() } : c)
+    const now = Date.now()
+    await db.chapters.update(id, { title, updatedAt: now })
+    chapters = chapters.map(c => c.id === id ? { ...c, title, updatedAt: now } : c)
   },
 
   async updateStatus(id: string, s: ChapterStatus) {
@@ -79,8 +80,9 @@ export const chapterStore = {
 
   async reorder(ids: string[]) {
     const now = Date.now()
-    const updates = ids.map((id, i) => db.chapters.update(id, { order: i, updatedAt: now }))
-    await Promise.all(updates)
+    await db.transaction('rw', db.chapters, async () => {
+      await Promise.all(ids.map((id, i) => db.chapters.update(id, { order: i, updatedAt: now })))
+    })
     chapters = ids
       .map(id => chapters.find(c => c.id === id)!)
       .filter(Boolean)

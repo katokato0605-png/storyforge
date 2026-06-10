@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { db } from '../../lib/db/database'
   import { chapterStore } from '../../lib/stores/chapterStore.svelte'
   import InputToolbar from './InputToolbar.svelte'
   import WordCounter from './WordCounter.svelte'
@@ -9,20 +8,26 @@
 
   let content = $state('')
   let title = $state('')
-  let isComposing = $state(false)
+  let isComposing = false
   let textareaEl: HTMLTextAreaElement | undefined
   let toolbarRef: InputToolbar | undefined
   let saveTimer: ReturnType<typeof setTimeout>
   let maxSaveTimer: ReturnType<typeof setTimeout>
+  let titleTimer: ReturnType<typeof setTimeout>
   let focusMode = $state(false)
+  let destroyed = false
 
-  // 章が切り替わったらコンテンツをロード
+  // 章切替時にコンテンツをロード（chapters配列への依存を最小化）
   $effect(() => {
     const chapter = chapterStore.chapters.find(c => c.id === chapterId)
     if (chapter) {
       content = chapter.content
       title = chapter.title
     }
+  })
+
+  // ツールバーへのref設定（章ロードとは独立したeffect）
+  $effect(() => {
     if (textareaEl) toolbarRef?.setRef(textareaEl)
   })
 
@@ -36,33 +41,31 @@
     clearTimeout(saveTimer)
     clearTimeout(maxSaveTimer)
     await chapterStore.saveContent(chapterId, content)
-    // 30秒後に再フラッシュ（最長保証）
-    maxSaveTimer = setTimeout(flushSave, 30_000)
-  }
-
-  function handleCompositionStart() { isComposing = true }
-  function handleCompositionEnd(e: CompositionEvent) {
-    isComposing = false
-    content = (e.target as HTMLTextAreaElement).value
-    scheduleSave()
-  }
-  function handleInput(e: Event) {
-    if (!isComposing) {
-      content = (e.target as HTMLTextAreaElement).value
-      scheduleSave()
+    if (!destroyed) {
+      maxSaveTimer = setTimeout(flushSave, 30_000)
     }
   }
 
-  async function handleTitleInput(e: Event) {
+  function handleCompositionStart() { isComposing = true }
+  // compositionend後にブラウザは必ずinputを発火するため、ここではフラグのみ更新。
+  // 実際の保存処理はhandleInputに委ねることでscheduleSaveの二重呼び出しを防ぐ。
+  function handleCompositionEnd() { isComposing = false }
+  function handleInput(e: Event) {
+    if (isComposing) return
+    content = (e.target as HTMLTextAreaElement).value
+    scheduleSave()
+  }
+
+  function handleTitleInput(e: Event) {
     const v = (e.target as HTMLInputElement).value
     title = v
-    await chapterStore.updateTitle(chapterId, v)
+    clearTimeout(titleTimer)
+    titleTimer = setTimeout(() => chapterStore.updateTitle(chapterId, v), 500)
   }
 
   function handleInsert(result: { value: string; selectionStart: number; selectionEnd: number }) {
     if (!textareaEl) return
     content = result.value
-    // 次フレームでカーソル位置を復元
     requestAnimationFrame(() => {
       textareaEl!.setSelectionRange(result.selectionStart, result.selectionEnd)
       textareaEl!.focus()
@@ -70,16 +73,17 @@
     scheduleSave()
   }
 
-  // タブ離脱・非表示時に即時保存
   $effect(() => {
     const handler = () => { if (chapterStore.isDirty) flushSave() }
     document.addEventListener('visibilitychange', handler)
     window.addEventListener('beforeunload', handler)
     return () => {
+      destroyed = true
       document.removeEventListener('visibilitychange', handler)
       window.removeEventListener('beforeunload', handler)
       clearTimeout(saveTimer)
       clearTimeout(maxSaveTimer)
+      clearTimeout(titleTimer)
     }
   })
 

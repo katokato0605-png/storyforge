@@ -16,12 +16,16 @@
 
   let events = $state<TimelineEvent[]>([])
   let editingId = $state<string | null>(null)
+  let editSnapshot = $state<TimelineEvent | null>(null)
   let loaded = $state(false)
+  let saveTimer: ReturnType<typeof setTimeout>
 
   $effect(() => {
     const pid = projectId
     loaded = false
+    let cancelled = false
     noteStore.load(pid).then(() => {
+      if (cancelled) return
       try {
         const raw = noteStore.getContent('timeline')
         events = raw ? JSON.parse(raw) : []
@@ -30,10 +34,16 @@
       }
       loaded = true
     })
+    return () => { cancelled = true }
   })
 
   async function save(evts: TimelineEvent[]) {
     await noteStore.save(projectId, 'timeline', JSON.stringify(evts))
+  }
+
+  function debouncedSave(evts: TimelineEvent[]) {
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => save(evts), 500)
   }
 
   function addEvent() {
@@ -46,20 +56,46 @@
     }
     const next = [...events, e]
     events = next
+    editSnapshot = { ...e }
     editingId = e.id
     save(next)
   }
 
-  function updateEvent(id: string, patch: Partial<TimelineEvent>) {
+  function startEdit(ev: TimelineEvent) {
+    editSnapshot = { ...ev }
+    editingId = ev.id
+  }
+
+  function updateEvent(id: string, patch: Partial<TimelineEvent>, debounce = false) {
     const next = events.map(e => e.id === id ? { ...e, ...patch } : e)
     events = next
-    save(next)
+    if (debounce) debouncedSave(next)
+    else save(next)
+  }
+
+  function cancelEdit() {
+    clearTimeout(saveTimer)
+    if (editSnapshot && editingId) {
+      const restored = events.map(e => e.id === editingId ? editSnapshot! : e)
+      events = restored
+      save(restored)
+    }
+    editingId = null
+    editSnapshot = null
+  }
+
+  function confirmEdit() {
+    clearTimeout(saveTimer)
+    save(events)
+    editingId = null
+    editSnapshot = null
   }
 
   function deleteEvent(id: string) {
     const next = events.filter(e => e.id !== id)
     events = next
     editingId = null
+    editSnapshot = null
     save(next)
   }
 
@@ -105,7 +141,7 @@
                   <input
                     class="fi tl-input-label"
                     value={ev.label}
-                    oninput={(e) => updateEvent(ev.id, { label: (e.target as HTMLInputElement).value })}
+                    oninput={(e) => updateEvent(ev.id, { label: (e.target as HTMLInputElement).value }, true)}
                     placeholder="時期・日付（例：第1章・1日目）"
                   />
                   <div class="tl-colors">
@@ -123,33 +159,35 @@
                 <input
                   class="fi tl-input-title"
                   value={ev.title}
-                  oninput={(e) => updateEvent(ev.id, { title: (e.target as HTMLInputElement).value })}
+                  oninput={(e) => updateEvent(ev.id, { title: (e.target as HTMLInputElement).value }, true)}
                   placeholder="イベントのタイトル"
                 />
                 <textarea
                   class="fi tl-textarea"
                   value={ev.note}
-                  oninput={(e) => updateEvent(ev.id, { note: (e.target as HTMLTextAreaElement).value })}
+                  oninput={(e) => updateEvent(ev.id, { note: (e.target as HTMLTextAreaElement).value }, true)}
                   placeholder="詳細・メモ（任意）"
                   rows="3"
                 ></textarea>
                 <div class="tl-edit-acts">
                   <button class="btn btn-ghost btn-sm" onclick={() => deleteEvent(ev.id)}>🗑 削除</button>
-                  <button class="btn btn-primary btn-sm" onclick={() => editingId = null}>完了</button>
+                  <div class="tl-edit-right">
+                    <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
+                    <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
+                  </div>
                 </div>
               </div>
             {:else}
-              <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-              <div class="tl-view" onclick={() => editingId = ev.id}>
-                <div class="tl-view-top">
+              <div class="tl-view">
+                <button class="tl-view-body" onclick={() => startEdit(ev)}>
                   <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
-                  <div class="tl-view-acts">
-                    <button class="tl-move-btn" onclick={(e) => { e.stopPropagation(); moveUp(idx) }} disabled={idx === 0} aria-label="上へ">↑</button>
-                    <button class="tl-move-btn" onclick={(e) => { e.stopPropagation(); moveDown(idx) }} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
-                  </div>
+                  <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
+                  {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
+                </button>
+                <div class="tl-view-acts">
+                  <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
+                  <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
                 </div>
-                <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
-                {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
               </div>
             {/if}
           </div>
@@ -179,12 +217,11 @@
   .tl-card:hover { border-color: var(--accent) }
   .tl-card.editing { border-color: var(--accent) }
 
-  .tl-view { padding: 10px 14px; cursor: pointer }
-  .tl-view-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px }
-  .tl-label { font-size: 11px; font-weight: 600 }
-  .tl-view-acts { display: flex; gap: 2px; opacity: 0 }
-  .tl-view:hover .tl-view-acts { opacity: 1 }
-  .tl-move-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 2px 4px; font-size: 12px; border-radius: 4px }
+  .tl-view { display: flex; align-items: flex-start }
+  .tl-view-body { flex: 1; padding: 10px 8px 10px 14px; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit }
+  .tl-label { font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px }
+  .tl-view-acts { display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; flex-shrink: 0 }
+  .tl-move-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px 6px; font-size: 12px; border-radius: 4px; min-width: 28px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center }
   .tl-move-btn:hover { color: var(--text); background: var(--surface2) }
   .tl-move-btn:disabled { opacity: .3; cursor: default }
   .tl-title { font-size: 14px; font-weight: 600; color: var(--text) }
@@ -195,10 +232,11 @@
   .tl-input-label { font-size: 12px; flex: 1 }
   .tl-input-title { font-size: 14px; font-weight: 600 }
   .tl-textarea { font-size: 13px; resize: vertical; min-height: 60px; line-height: 1.6 }
-  .tl-colors { display: flex; gap: 4px; flex-shrink: 0 }
-  .tl-color-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: .1s }
-  .tl-color-dot.selected { border-color: var(--text); transform: scale(1.2) }
-  .tl-edit-acts { display: flex; justify-content: space-between }
+  .tl-colors { display: flex; gap: 6px; flex-shrink: 0 }
+  .tl-color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: .1s }
+  .tl-color-dot.selected { border-color: var(--text); transform: scale(1.15) }
+  .tl-edit-acts { display: flex; justify-content: space-between; align-items: center }
+  .tl-edit-right { display: flex; gap: 6px }
 
   .tl-add-btn { margin-top: 8px; margin-left: 32px; background: none; border: 1px dashed var(--border); color: var(--muted); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: .15s; width: calc(100% - 32px) }
   .tl-add-btn:hover { border-color: var(--accent); color: var(--accent) }

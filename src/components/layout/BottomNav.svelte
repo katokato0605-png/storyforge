@@ -8,8 +8,9 @@
   const tabs: { id: TabId; icon: string; label: string }[] = [
     { id: 'writing',   icon: '✏️', label: '執筆' },
     { id: 'plot',      icon: '📋', label: 'プロット' },
-    { id: 'timeline',  icon: '🕐', label: 'タイムライン' },
+    { id: 'timeline',  icon: '🕐', label: 'タイム' },
     { id: 'character', icon: '👤', label: 'キャラ' },
+    { id: 'lore',      icon: '📖', label: '設定' },
     { id: 'ideas',     icon: '💡', label: 'アイデア' },
   ]
 

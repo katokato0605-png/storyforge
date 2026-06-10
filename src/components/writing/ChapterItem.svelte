@@ -21,7 +21,7 @@
     e.stopPropagation()
     appStore.openModal('confirm', {
       title: '章を削除',
-      message: `「${chapter.title || '無題'}」を削除しますか？この操作は取り消せません。`,
+      message: `「${chapter.title || '無題'}」（${chapter.wordCount.toLocaleString()}字）を削除しますか？この操作は取り消せません。`,
       confirmLabel: '削除',
       danger: true,
       onConfirm: () => chapterStore.deleteChapter(chapter.id),
@@ -49,8 +49,8 @@
   .ch-item:hover{color:var(--text);background:var(--surface2)}
   .ch-item.active{color:var(--text);border-left-color:var(--accent);background:var(--surface2)}
   .ch-item-t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ch-item-btns{display:none;flex-shrink:0;gap:2px}
-  .ch-item:hover .ch-item-btns{display:flex}
+  .ch-item-btns{display:flex;flex-shrink:0;gap:2px;opacity:0;transition:opacity .15s}
+  .ch-item:hover .ch-item-btns,.ch-item.active .ch-item-btns{opacity:1}
   .ch-micro-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:1px 3px;border-radius:3px;font-size:11px;line-height:1;transition:.1s}
   .ch-micro-btn.del:hover{color:var(--danger)}
   .ch-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}

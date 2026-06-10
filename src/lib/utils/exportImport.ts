@@ -33,7 +33,7 @@ export function downloadJSON(json: string) {
   a.href = url
   a.download = `storyforge-${date}.json`
   a.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export async function importFromJSON(json: string): Promise<{ projects: number; chapters: number }> {

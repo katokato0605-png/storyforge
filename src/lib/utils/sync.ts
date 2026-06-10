@@ -18,12 +18,17 @@ function headers() {
 
 export function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  const arr = new Uint8Array(6)
+  crypto.getRandomValues(arr)
+  return Array.from(arr, b => chars[b % chars.length]).join('')
 }
 
 export async function pushSync(code: string): Promise<void> {
   if (!isConfigured()) throw new Error('Supabaseが設定されていません')
   const data = await exportAll()
+  if (data.length > 800_000) {
+    throw new Error(`データサイズが大きすぎます（${Math.round(data.length / 1024)}KB）。不要なデータを削除してください。`)
+  }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
     method: 'POST',
     headers: { ...headers(), 'Prefer': 'resolution=merge-duplicates' },

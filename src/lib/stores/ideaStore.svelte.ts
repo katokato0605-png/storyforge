@@ -36,4 +36,14 @@ export const ideaStore = {
     await db.ideas.delete(id)
     ideas = ideas.filter(i => i.id !== id)
   },
+
+  async reload() {
+    status = 'loading'
+    try {
+      ideas = await db.ideas.orderBy('createdAt').reverse().toArray()
+      status = 'ready'
+    } catch {
+      status = 'error'
+    }
+  },
 }

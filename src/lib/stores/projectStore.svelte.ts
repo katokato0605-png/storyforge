@@ -41,10 +41,11 @@ export const projectStore = {
   },
 
   async deleteProject(id: string) {
-    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes], async () => {
+    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas], async () => {
       await db.projects.delete(id)
       await db.chapters.where('projectId').equals(id).delete()
       await db.projectNotes.where('projectId').equals(id).delete()
+      await db.ideas.where('linkedProjectId').equals(id).modify({ linkedProjectId: null })
     })
     projects = projects.filter(p => p.id !== id)
     if (currentProjectId === id) currentProjectId = null

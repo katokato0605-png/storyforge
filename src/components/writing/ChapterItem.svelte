@@ -37,7 +37,7 @@
   tabindex="0"
   onkeydown={(e) => e.key === 'Enter' && chapterStore.selectChapter(chapter.id)}
 >
-  <span class="ch-status" style="background:{statusColors[chapter.status]}" title={statusLabels[chapter.status]}></span>
+  <span class="ch-status" style="background:{statusColors[chapter.status]};color:white" aria-label={statusLabels[chapter.status]}>{statusLabels[chapter.status][0]}</span>
   <span class="ch-item-t">{chapter.title || '無題'}</span>
   <div class="ch-item-btns">
     <button class="ch-micro-btn del" onclick={handleDelete} title="削除" aria-label="章を削除">✕</button>
@@ -53,5 +53,5 @@
   .ch-item:hover .ch-item-btns,.ch-item.active .ch-item-btns{opacity:1}
   .ch-micro-btn{background:none;border:none;cursor:pointer;color:var(--muted);padding:1px 3px;border-radius:3px;font-size:11px;line-height:1;transition:.1s}
   .ch-micro-btn.del:hover{color:var(--danger)}
-  .ch-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .ch-status{font-size:9px;font-weight:700;border-radius:4px;padding:1px 4px;flex-shrink:0;line-height:1.4}
 </style>

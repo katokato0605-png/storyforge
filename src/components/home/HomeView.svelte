@@ -88,6 +88,7 @@
       {:else}
         <div class="works-grid">
           {#each projectStore.projects as p (p.id)}
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="wcard" onclick={() => projectStore.selectProject(p.id)} role="button" tabindex="0"
                  onkeydown={(e) => e.key === 'Enter' && projectStore.selectProject(p.id)}>
               <div class="wcard-acts">
@@ -110,8 +111,10 @@
 </div>
 
 {#if showForm}
-  <div class="modal-ov" onclick={() => showForm = false} role="dialog" aria-modal="true" aria-label="作品フォーム">
-    <div class="modal" onclick={(e) => e.stopPropagation()}>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="modal-ov" onclick={() => showForm = false} onkeydown={(e) => e.key === 'Escape' && (showForm = false)} role="dialog" aria-modal="true" aria-label="作品フォーム" tabindex="-1">
+    <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+    <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
       <div class="modal-title">{editTarget ? '作品を編集' : '新しい作品'}</div>
 
       {#if !editTarget}

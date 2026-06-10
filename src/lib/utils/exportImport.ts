@@ -1,14 +1,57 @@
+import * as v from 'valibot'
 import { db } from '../db/database'
-import type { Project, Chapter, ProjectNote, Idea } from '../db/schema'
 
-interface ExportData {
-  version: 3
-  exportedAt: number
-  projects: Project[]
-  chapters: Chapter[]
-  projectNotes: ProjectNote[]
-  ideas: Idea[]
-}
+// ---- valibot schemas ----
+
+const ProjectSchema = v.object({
+  id: v.string(),
+  title: v.string(),
+  description: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+
+const ChapterSchema = v.object({
+  id: v.string(),
+  projectId: v.string(),
+  title: v.string(),
+  content: v.string(),
+  plotMemo: v.string(),
+  status: v.picklist(['draft', 'writing', 'review', 'done']),
+  order: v.number(),
+  wordCount: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+
+const ProjectNoteSchema = v.object({
+  id: v.string(),
+  projectId: v.string(),
+  type: v.picklist(['plot', 'character', 'world', 'memo', 'lore', 'timeline']),
+  content: v.string(),
+  updatedAt: v.number(),
+})
+
+const IdeaSchema = v.object({
+  id: v.string(),
+  content: v.string(),
+  tags: v.array(v.string()),
+  linkedProjectId: v.nullable(v.string()),
+  createdAt: v.number(),
+})
+
+const ExportDataSchema = v.object({
+  version: v.literal(3),
+  exportedAt: v.number(),
+  projects: v.array(ProjectSchema),
+  chapters: v.array(ChapterSchema),
+  projectNotes: v.array(ProjectNoteSchema),
+  ideas: v.array(IdeaSchema),
+})
+
+type ExportData = v.InferOutput<typeof ExportDataSchema>
+
+// ---- public API ----
 
 export async function exportAll(): Promise<string> {
   const [projects, chapters, projectNotes, ideas] = await Promise.all([
@@ -37,22 +80,27 @@ export function downloadJSON(json: string) {
 }
 
 export async function importFromJSON(json: string): Promise<{ projects: number; chapters: number }> {
-  let data: ExportData
+  let parsed: unknown
   try {
-    data = JSON.parse(json) as ExportData
+    parsed = JSON.parse(json)
   } catch {
     throw new Error('JSONの解析に失敗しました')
   }
-  if (!Array.isArray(data.projects)) throw new Error('無効なデータ形式です')
+
+  const result = v.safeParse(ExportDataSchema, parsed)
+  if (!result.success) {
+    throw new Error('無効なデータ形式です（バージョンまたは構造が一致しません）')
+  }
+  const data = result.output
 
   await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas], async () => {
-    if (data.projects?.length)     await db.projects.bulkPut(data.projects)
-    if (data.chapters?.length)     await db.chapters.bulkPut(data.chapters)
-    if (data.projectNotes?.length) await db.projectNotes.bulkPut(data.projectNotes)
-    if (data.ideas?.length)        await db.ideas.bulkPut(data.ideas)
+    if (data.projects.length)     await db.projects.bulkPut(data.projects)
+    if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
+    if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
+    if (data.ideas.length)        await db.ideas.bulkPut(data.ideas)
   })
 
-  return { projects: data.projects.length, chapters: data.chapters?.length ?? 0 }
+  return { projects: data.projects.length, chapters: data.chapters.length }
 }
 
 export function readFileAsText(file: File): Promise<string> {

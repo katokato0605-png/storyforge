@@ -138,7 +138,7 @@
   .ch-title-inp::placeholder{color:var(--muted)}
   .write-div{height:1px;background:var(--border);margin:10px 28px;flex-shrink:0}
   .ch-body{flex:1;overflow-y:auto;padding:0 28px;display:flex;flex-direction:column;min-height:0}
-  .ch-ta{flex:1;min-height:600px;width:100%;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-size:16px;line-height:2;font-family:'Hiragino Mincho ProN','Yu Mincho','Georgia',serif;letter-spacing:.04em;padding-bottom:120px}
+  .ch-ta{flex:1;min-height:600px;width:100%;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-size:16px;line-height:1.85;font-family:'Hiragino Mincho ProN','Yu Mincho','Georgia',serif;letter-spacing:.04em;padding-bottom:120px}
   .ch-ta::placeholder{color:var(--muted)}
   .focus-toggle{position:fixed;bottom:48px;right:16px;z-index:50;opacity:.4;transition:opacity .2s}
   .focus-toggle:hover{opacity:1}

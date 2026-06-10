@@ -43,6 +43,7 @@
   class="modal-backdrop"
   role="dialog"
   aria-modal="true"
+  tabindex="-1"
   onmousedown={handleBackdrop}
   onkeydown={handleKeydown}
 >

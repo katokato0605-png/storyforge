@@ -28,6 +28,7 @@
 <Modal>
   <h2 class="modal-title">{props.title ?? '入力'}</h2>
   <div class="fg">
+    <!-- svelte-ignore a11y_autofocus -->
     <input
       class="fi"
       value={value}

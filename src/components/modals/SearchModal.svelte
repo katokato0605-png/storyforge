@@ -74,11 +74,12 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="sm-backdrop" onmousedown={(e) => { if (e.target === e.currentTarget) appStore.closeModal() }} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-label="全文検索">
+<div class="sm-backdrop" onmousedown={(e) => { if (e.target === e.currentTarget) appStore.closeModal() }} onkeydown={handleKeydown} role="dialog" aria-modal="true" aria-label="全文検索" tabindex="-1">
   <div class="sm-box">
     <div class="sm-top">
       <div class="sm-inp-wrap">
         <span class="sm-icon">🔍</span>
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           class="sm-inp"
           value={query}

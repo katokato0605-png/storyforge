@@ -12,6 +12,11 @@
     color: string
   }
 
+  interface TimelineData {
+    version: 1
+    events: TimelineEvent[]
+  }
+
   const COLORS = ['#7c6af7', '#e09020', '#4caf50', '#e05555', '#2196f3', '#e91e8c']
 
   let events = $state<TimelineEvent[]>([])
@@ -28,7 +33,19 @@
       if (cancelled) return
       try {
         const raw = noteStore.getContent('timeline')
-        events = raw ? JSON.parse(raw) : []
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) {
+            // legacy: migrate from bare array (version < 1)
+            events = parsed
+          } else if (parsed?.version === 1 && Array.isArray(parsed.events)) {
+            events = parsed.events
+          } else {
+            events = []
+          }
+        } else {
+          events = []
+        }
       } catch {
         events = []
       }
@@ -38,7 +55,8 @@
   })
 
   async function save(evts: TimelineEvent[]) {
-    await noteStore.save(projectId, 'timeline', JSON.stringify(evts))
+    const data: TimelineData = { version: 1, events: evts }
+    await noteStore.save(projectId, 'timeline', JSON.stringify(data))
   }
 
   function debouncedSave(evts: TimelineEvent[]) {

@@ -11,23 +11,14 @@ export const loreStore = {
   get status() { return status },
 
   async load(projectId: string) {
-    if (loadedProjectId === projectId && status === 'ready') return
+    if (loadedProjectId === projectId && (status === 'ready' || status === 'loading')) return
     status = 'loading'
     loadedProjectId = projectId
     try {
-      entries = await db.loreEntries
-        .where('[projectId+type]').anyOf(
-          [projectId, 'character'],
-          [projectId, 'world'],
-          [projectId, 'lore'],
-        )
-        .reverse()
-        .sortBy('createdAt')
-      // sortBy returns sorted asc, reverse by createdAt desc
-      entries = await db.loreEntries
+      const result = await db.loreEntries
         .where('projectId').equals(projectId)
-        .reverse()
-        .sortBy('createdAt')
+        .toArray()
+      entries = result.sort((a, b) => b.createdAt - a.createdAt)
       status = 'ready'
     } catch {
       status = 'error'

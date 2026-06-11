@@ -26,7 +26,7 @@
 
   let filterTag = $state('')
 
-  $effect(() => {
+  onMount(() => {
     const pid = projectStore.currentProjectId
     if (pid) loreStore.load(pid)
   })

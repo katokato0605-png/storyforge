@@ -38,6 +38,19 @@ export interface Idea {
   createdAt: number
 }
 
+export type LoreType = 'character' | 'world' | 'lore'
+
+export interface LoreEntry {
+  id: string
+  projectId: string
+  type: LoreType
+  title: string
+  content: string
+  tags: string[]
+  createdAt: number
+  updatedAt: number
+}
+
 export interface BackupEntry {
   id: string
   generation: 1 | 2 | 3

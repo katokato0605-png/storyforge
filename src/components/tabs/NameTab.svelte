@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { nanoid } from 'nanoid'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
+  import { ideaStore } from '../../lib/stores/ideaStore.svelte'
 
   // ---- Types ----
   type SceneRole = '起' | '承' | '転' | '結' | '自由'
@@ -79,7 +81,44 @@
   } as const
 
   // ---- State ----
-  let subTab = $state<'episode' | 'chapter'>('episode')
+  let subTab = $state<'episode' | 'chapter' | 'idea'>('episode')
+
+  // Idea sub-tab
+  const SCENE_TAG = '書きたいシーン'
+  const sceneIdeas = $derived(ideaStore.ideas.filter(i => i.tags.includes(SCENE_TAG)))
+  let ideaEditId = $state<string | null>(null)
+  let ideaEditTitle = $state('')
+  let ideaEditContent = $state('')
+  let ideaEditTags = $state('')
+  let ideaAdding = $state(false)
+  let newIdeaTitle = $state('')
+  let newIdeaContent = $state('')
+  let newIdeaTags = $state(SCENE_TAG)
+
+  function startIdeaEdit(idea: { id: string; title: string; content: string; tags: string[] }) {
+    ideaEditId = idea.id
+    ideaEditTitle = idea.title ?? ''
+    ideaEditContent = idea.content
+    ideaEditTags = idea.tags.join(', ')
+  }
+
+  async function saveIdeaEdit() {
+    if (!ideaEditId) return
+    const tags = ideaEditTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    await ideaStore.update(ideaEditId, { title: ideaEditTitle.trim(), content: ideaEditContent.trim(), tags })
+    ideaEditId = null
+  }
+
+  async function addSceneIdea() {
+    if (!newIdeaTitle.trim() && !newIdeaContent.trim()) return
+    const tags = newIdeaTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    if (!tags.includes(SCENE_TAG)) tags.unshift(SCENE_TAG)
+    await ideaStore.create(newIdeaTitle.trim(), newIdeaContent.trim(), tags, projectStore.currentProjectId ?? null)
+    newIdeaTitle = ''
+    newIdeaContent = ''
+    newIdeaTags = SCENE_TAG
+    ideaAdding = false
+  }
 
   // Episode sub-tab
   let episodes = $state<Episode[]>([])
@@ -276,6 +315,8 @@
     chapters = chapters.map(c => c.id === chId ? { ...c, beats: arr } : c)
     save()
   }
+
+  onMount(() => ideaStore.load())
 </script>
 
 {#if loaded && projectStore.currentProjectId}
@@ -294,6 +335,11 @@
           class:active={subTab === 'chapter'}
           onclick={() => subTab = 'chapter'}
         >章</button>
+        <button
+          class="nt-stab"
+          class:active={subTab === 'idea'}
+          onclick={() => subTab = 'idea'}
+        >アイデア</button>
       </div>
     </div>
 
@@ -580,6 +626,87 @@
           {/if}
         </div>
       </div>
+    <!-- ============ アイデアサブタブ ============ -->
+    {:else if subTab === 'idea'}
+      <div class="nt-idea-body">
+        <div class="nt-idea-toolbar">
+          <span class="nt-idea-hint">「書きたいシーン」タグのついたアイデアが表示されます</span>
+          <button class="btn btn-primary btn-sm" onclick={() => { ideaAdding = true; newIdeaTitle = ''; newIdeaContent = ''; newIdeaTags = SCENE_TAG }}>＋ 追加</button>
+        </div>
+
+        {#if ideaAdding}
+          <div class="nt-idea-form">
+            <input
+              class="fi"
+              bind:value={newIdeaTitle}
+              placeholder="タイトル（任意）"
+              autofocus
+            />
+            <textarea
+              class="fta nt-idea-ta"
+              bind:value={newIdeaContent}
+              placeholder="内容"
+            ></textarea>
+            <input
+              class="fi nt-idea-tags-input"
+              bind:value={newIdeaTags}
+              placeholder="タグ（カンマ区切り）"
+            />
+            <div class="nt-idea-form-acts">
+              <button class="btn btn-primary btn-sm" onclick={addSceneIdea}>保存</button>
+              <button class="btn btn-ghost btn-sm" onclick={() => ideaAdding = false}>キャンセル</button>
+            </div>
+          </div>
+        {/if}
+
+        {#if sceneIdeas.length === 0 && !ideaAdding}
+          <div class="nt-empty">「書きたいシーン」タグのアイデアがありません。<br>アイデアタブでタグを付けるか、＋ 追加で作成してください。</div>
+        {:else}
+          <div class="nt-idea-list">
+            {#each sceneIdeas as idea (idea.id)}
+              <div class="nt-idea-card" class:editing={ideaEditId === idea.id}>
+                {#if ideaEditId === idea.id}
+                  <input
+                    class="fi nt-idea-title-edit"
+                    bind:value={ideaEditTitle}
+                    placeholder="タイトル"
+                  />
+                  <textarea
+                    class="fta nt-idea-ta"
+                    bind:value={ideaEditContent}
+                    placeholder="内容"
+                  ></textarea>
+                  <input
+                    class="fi nt-idea-tags-input"
+                    bind:value={ideaEditTags}
+                    placeholder="タグ（カンマ区切り）"
+                  />
+                  <div class="nt-idea-form-acts">
+                    <button class="btn btn-primary btn-sm" onclick={saveIdeaEdit}>保存</button>
+                    <button class="btn btn-ghost btn-sm" onclick={() => ideaEditId = null}>キャンセル</button>
+                  </div>
+                {:else}
+                  <div class="nt-idea-card-top">
+                    {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
+                    <div class="nt-scene-acts">
+                      <button class="iBtn" onclick={() => startIdeaEdit(idea)}>✎</button>
+                      <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
+                    </div>
+                  </div>
+                  {#if idea.content}
+                    <div class="nt-idea-content">{idea.content}</div>
+                  {/if}
+                  <div class="nt-idea-tags">
+                    {#each idea.tags as tag}
+                      <span class="nt-tag-badge">{tag}</span>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
   </div>
 {/if}
@@ -731,6 +858,45 @@
     font-size: 13px; color: var(--text); font-family: inherit;
   }
   .nt-tmpl-item:hover { background: var(--surface2) }
+
+  /* Idea subtab */
+  .nt-idea-body {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+  }
+  .nt-idea-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .nt-idea-hint { font-size: 12px; color: var(--muted) }
+  .nt-idea-list {
+    flex: 1; overflow-y: auto; padding: 12px 20px 80px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .nt-idea-form {
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+  .nt-idea-form-acts { display: flex; gap: 8px }
+  .nt-idea-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); overflow: hidden; transition: border-color .15s;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .nt-idea-card:hover { border-color: var(--accent) }
+  .nt-idea-card.editing { border-color: var(--accent); padding: 12px 14px; gap: 8px }
+  .nt-idea-card-top { display: flex; align-items: flex-start; gap: 8px }
+  .nt-idea-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text) }
+  .nt-idea-title-edit { font-size: 14px; font-weight: 700 }
+  .nt-idea-content { font-size: 13px; color: var(--text); white-space: pre-wrap; line-height: 1.6 }
+  .nt-idea-ta { width: 100%; min-height: 100px; resize: vertical; font-size: 13px; line-height: 1.7 }
+  .nt-idea-tags { display: flex; flex-wrap: wrap; gap: 4px }
+  .nt-idea-tags-input { font-size: 12px }
+  .nt-tag-badge {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+  }
 
   /* Shared */
   .iBtn { background: none; border: none; cursor: pointer; padding: 6px; font-size: 16px; border-radius: 6px; color: var(--muted); line-height: 1 }

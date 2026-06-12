@@ -550,7 +550,7 @@
       </div>
 
     <!-- ============ 章サブタブ ============ -->
-    {:else}
+    {:else if subTab === 'chapter'}
       <div class="nt-body">
         <!-- Left: chapter list -->
         <div class="nt-left">

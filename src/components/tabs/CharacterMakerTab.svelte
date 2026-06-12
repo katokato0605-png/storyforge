@@ -173,13 +173,19 @@
     personality: [...categories[2].items],
   })
 
-  let result = $state<Record<string, string> | null>(null)
+  let result = $state<Record<string, string>>({
+    backbone: categories[0].items[Math.floor(Math.random() * categories[0].items.length)],
+    looks:    categories[1].items[Math.floor(Math.random() * categories[1].items.length)],
+    personality: categories[2].items[Math.floor(Math.random() * categories[2].items.length)],
+  })
   let saveSuccess = $state(false)
   let editingCategory = $state<string | null>(null)
   let newItemText = $state('')
   let pinned = $state<Record<string, boolean>>({ backbone: false, looks: false, personality: false })
   let searchingCard = $state<string | null>(null)
   let cardSearch = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
+  let overlayCategory = $state<string | null>(null)
+  let overlaySearch = $state('')
 
   function pickRandom(arr: string[]) {
     return arr[Math.floor(Math.random() * arr.length)]
@@ -188,7 +194,7 @@
   function generate() {
     const next: Record<string, string> = {}
     for (const cat of categories) {
-      if (pinned[cat.key] && result?.[cat.key]) {
+      if (pinned[cat.key] && result[cat.key]) {
         next[cat.key] = result[cat.key]
       } else {
         next[cat.key] = pickRandom(customItems[cat.key])
@@ -196,6 +202,12 @@
     }
     result = next
     saveSuccess = false
+  }
+
+  function overlayFiltered(key: string) {
+    const q = overlaySearch.trim().toLowerCase()
+    if (!q) return customItems[key]
+    return customItems[key].filter(item => item.toLowerCase().includes(q))
   }
 
   function addItem(key: string) {
@@ -244,7 +256,7 @@
   </div>
 
   <div class="cm-body">
-    <!-- Categories -->
+    <!-- Categories (compact) -->
     <div class="cm-cats">
       {#each categories as cat}
         <div class="cm-cat">
@@ -252,37 +264,8 @@
             <span class="cm-cat-icon">{cat.icon}</span>
             <span class="cm-cat-label">{cat.label}</span>
             <span class="cm-cat-count">{customItems[cat.key].length}種類</span>
-            <button
-              class="cm-edit-btn"
-              class:active={editingCategory === cat.key}
-              onclick={() => { editingCategory = editingCategory === cat.key ? null : cat.key; newItemText = '' }}
-            >{editingCategory === cat.key ? '完了' : '＋ 編集'}</button>
+            <button class="cm-list-btn" onclick={() => { overlayCategory = cat.key; overlaySearch = '' }}>一覧 ›</button>
           </div>
-
-          <div class="cm-tags">
-            {#each customItems[cat.key] as item, i}
-              <span class="cm-tag" class:editing={editingCategory === cat.key}>
-                {item}
-                {#if editingCategory === cat.key}
-                  <button class="cm-tag-del" onclick={() => removeItem(cat.key, i)} aria-label="削除">×</button>
-                {/if}
-              </span>
-            {/each}
-          </div>
-
-          {#if editingCategory === cat.key}
-            <div class="cm-add-row">
-              <input
-                class="fi cm-add-input"
-                placeholder="新しい項目を追加…"
-                value={newItemText}
-                oninput={e => newItemText = (e.target as HTMLInputElement).value}
-                onkeydown={e => { if (e.key === 'Enter') addItem(cat.key) }}
-              />
-              <button class="btn btn-primary btn-sm" onclick={() => addItem(cat.key)} disabled={!newItemText.trim()}>追加</button>
-              <button class="btn btn-ghost btn-sm" onclick={() => resetCategory(cat.key)}>リセット</button>
-            </div>
-          {/if}
         </div>
       {/each}
     </div>
@@ -294,9 +277,8 @@
       </button>
     </div>
 
-    <!-- Result -->
-    {#if result}
-      <div class="cm-result">
+    <!-- Result (always visible) -->
+    <div class="cm-result">
         <div class="cm-result-title">生成されたキャラクター</div>
         <div class="cm-result-cards">
           {#each categories as cat}
@@ -364,9 +346,64 @@
           {/if}
         </div>
       </div>
-    {/if}
   </div>
 </div>
+
+<!-- Category overlay -->
+{#if overlayCategory}
+  {@const ocat = categories.find(c => c.key === overlayCategory)!}
+  {@const isEditing = editingCategory === overlayCategory}
+  {@const hits = overlayFiltered(overlayCategory)}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="cm-overlay-bg" onclick={e => { if (e.target === e.currentTarget) { overlayCategory = null; editingCategory = null } }}></div>
+  <div class="cm-overlay" role="dialog" aria-modal="true">
+    <div class="cm-overlay-head">
+      <span class="cm-overlay-icon">{ocat.icon}</span>
+      <span class="cm-overlay-title">{ocat.label}</span>
+      <span class="cm-cat-count">{customItems[overlayCategory].length}種類</span>
+      <button
+        class="cm-edit-btn"
+        class:active={isEditing}
+        onclick={() => { editingCategory = isEditing ? null : overlayCategory; newItemText = '' }}
+      >{isEditing ? '完了' : '＋ 編集'}</button>
+      <button class="cm-overlay-close" onclick={() => { overlayCategory = null; editingCategory = null }}>✕</button>
+    </div>
+    <div class="cm-overlay-search">
+      <input
+        class="fi"
+        placeholder="🔍 絞り込み…"
+        value={overlaySearch}
+        oninput={e => overlaySearch = (e.target as HTMLInputElement).value}
+      />
+      {#if overlaySearch}<button class="cm-search-clear" onclick={() => overlaySearch = ''}>✕</button>{/if}
+    </div>
+    <div class="cm-overlay-tags">
+      {#each hits as item, i}
+        {@const realIdx = customItems[overlayCategory].indexOf(item)}
+        <span class="cm-tag" class:editing={isEditing}>
+          {item}
+          {#if isEditing}
+            <button class="cm-tag-del" onclick={() => removeItem(overlayCategory, realIdx)} aria-label="削除">×</button>
+          {/if}
+        </span>
+      {/each}
+      {#if hits.length === 0}<span class="cm-no-match">一致する項目がありません</span>{/if}
+    </div>
+    {#if isEditing}
+      <div class="cm-add-row">
+        <input
+          class="fi cm-add-input"
+          placeholder="新しい項目を追加…"
+          value={newItemText}
+          oninput={e => newItemText = (e.target as HTMLInputElement).value}
+          onkeydown={e => { if (e.key === 'Enter') addItem(overlayCategory) }}
+        />
+        <button class="btn btn-primary btn-sm" onclick={() => addItem(overlayCategory)} disabled={!newItemText.trim()}>追加</button>
+        <button class="btn btn-ghost btn-sm" onclick={() => resetCategory(overlayCategory)}>リセット</button>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .cm-wrap   { display: flex; flex-direction: column; height: 100%; overflow: hidden }
@@ -376,16 +413,36 @@
 
   .cm-body   { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px }
 
-  .cm-cats   { display: flex; flex-direction: column; gap: 14px }
-  .cm-cat    { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px }
+  .cm-cats   { display: flex; flex-direction: column; gap: 8px }
+  .cm-cat    { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px }
 
   .cm-cat-header { display: flex; align-items: center; gap: 8px }
-  .cm-cat-icon   { font-size: 16px }
-  .cm-cat-label  { font-size: 14px; font-weight: 700; flex: 1 }
+  .cm-cat-icon   { font-size: 15px }
+  .cm-cat-label  { font-size: 13px; font-weight: 700; flex: 1 }
   .cm-cat-count  { font-size: 11px; color: var(--muted) }
+  .cm-list-btn   { background: var(--surface2); border: 1px solid var(--border); cursor: pointer; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; color: var(--muted); transition: .15s; font-family: inherit }
+  .cm-list-btn:hover { color: var(--text); border-color: var(--accent) }
   .cm-edit-btn   { background: var(--surface2); border: 1px solid var(--border); cursor: pointer; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; color: var(--muted); transition: .15s; font-family: inherit }
   .cm-edit-btn:hover { color: var(--text); border-color: var(--accent) }
   .cm-edit-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent) }
+
+  .cm-overlay-bg { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100 }
+  .cm-overlay {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 101; width: min(560px, 92vw); max-height: 80vh;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; overflow: hidden;
+  }
+  .cm-overlay-head { display: flex; align-items: center; gap: 8px }
+  .cm-overlay-icon  { font-size: 16px }
+  .cm-overlay-title { font-size: 15px; font-weight: 700; flex: 1 }
+  .cm-overlay-close { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--muted); padding: 0 4px; line-height: 1; transition: color .1s }
+  .cm-overlay-close:hover { color: var(--text) }
+  .cm-overlay-search { display: flex; align-items: center; gap: 6px }
+  .cm-overlay-search .fi { flex: 1; font-size: 13px }
+  .cm-search-clear { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 13px; padding: 2px 6px }
+  .cm-search-clear:hover { color: var(--text) }
+  .cm-overlay-tags { flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 }
 
   .cm-tags   { display: flex; flex-wrap: wrap; gap: 6px }
   .cm-tag    { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--text) }

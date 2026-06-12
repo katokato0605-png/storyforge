@@ -32,6 +32,9 @@
         '霊媒師', '骨董商', '古書店主', '図書館司書', '元死刑囚',
         '宇宙飛行士候補', '移民一世', '老舗旅館の若旦那', '花街育ち', '修道士',
         '元プロ野球選手', '山伏', '元アイドル', '現役大学院生', '孤独な天文学者',
+        '元外科医', '錬金術師', '吟遊詩人', '遊牧民の末裔', '地下闘技場の主催者',
+        '孤島の灯台守', '廃屋に住む隠者', '記憶を失った旅人', '呪われた王族', '人形師',
+        '伝説の賞金稼ぎ', '秘密結社の構成員', '砂漠の商隊長', '義賊', '復讐者',
       ],
     },
     {
@@ -63,6 +66,9 @@
         '声が高い', 'ポニーテール', '編み込みヘア', '七三分け', '常にスーツ',
         '常にジャージ', '目が細い', '細い眉', '太い眉', '首が長い',
         '爪が長い', '異様に白い歯', '顔が左右非対称', '生え際が薄い', '笑うとえくぼ',
+        '全身に包帯を巻いている', '仮面をつけている', '燃え残りのような焦げ跡', '羽織を翻す立ち姿',
+        '極端に目が大きい', '鎖骨が際立つ', 'タトゥーが首まである', '輝くような金色の瞳',
+        '常に扇子を持っている', '爪に模様が彫られている', '透き通るような青い目',
       ],
     },
     {
@@ -95,11 +101,14 @@
         '説教好き', '愚痴が多い', '自分を過大評価する', '自分を過小評価する',
         '疑り深い', '人を信じやすい', '変化を好む', '変化を恐れる',
         '規則を破りたがる', '秩序を重んじる',
+        '死を恐れない', '過去に囚われている', '未来しか見ない', '矛盾を抱えている',
+        '愛情に飢えている', '孤独を愛している', '笑顔の裏に深い悲しみがある',
+        '子どもに異様に優しい', '弱者を見捨てられない', '強者にのみ従う',
+        '美しいものに執着する', '破壊衝動がある', '記憶を封印している',
       ],
     },
   ]
 
-  // State per category: selected items (editable list) + current random pick
   let customItems = $state<Record<string, string[]>>({
     backbone: [...categories[0].items],
     looks: [...categories[1].items],
@@ -110,17 +119,23 @@
   let saveSuccess = $state(false)
   let editingCategory = $state<string | null>(null)
   let newItemText = $state('')
+  let searchText = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
+  let pinned = $state<Record<string, boolean>>({ backbone: false, looks: false, personality: false })
 
   function pickRandom(arr: string[]) {
     return arr[Math.floor(Math.random() * arr.length)]
   }
 
   function generate() {
-    result = {
-      backbone: pickRandom(customItems.backbone),
-      looks: pickRandom(customItems.looks),
-      personality: pickRandom(customItems.personality),
+    const next: Record<string, string> = {}
+    for (const cat of categories) {
+      if (pinned[cat.key] && result?.[cat.key]) {
+        next[cat.key] = result[cat.key]
+      } else {
+        next[cat.key] = pickRandom(customItems[cat.key])
+      }
     }
+    result = next
     saveSuccess = false
   }
 
@@ -132,12 +147,19 @@
   }
 
   function removeItem(key: string, idx: number) {
-    customItems[key] = customItems[key].filter((_, i) => i !== idx)
+    const filtered = customItems[key].filter((_, i) => i !== idx)
+    customItems[key] = filtered
   }
 
   function resetCategory(key: string) {
     const cat = categories.find(c => c.key === key)
     if (cat) customItems[key] = [...cat.items]
+  }
+
+  function filteredItems(key: string) {
+    const q = searchText[key].trim().toLowerCase()
+    if (!q) return customItems[key]
+    return customItems[key].filter(item => item.toLowerCase().includes(q))
   }
 
   async function saveToLore() {
@@ -159,12 +181,12 @@
     <!-- Categories -->
     <div class="cm-cats">
       {#each categories as cat}
-        {@const items = customItems[cat.key]}
+        {@const items = filteredItems(cat.key)}
         <div class="cm-cat">
           <div class="cm-cat-header">
             <span class="cm-cat-icon">{cat.icon}</span>
             <span class="cm-cat-label">{cat.label}</span>
-            <span class="cm-cat-count">{items.length}種類</span>
+            <span class="cm-cat-count">{customItems[cat.key].length}種類</span>
             <button
               class="cm-edit-btn"
               class:active={editingCategory === cat.key}
@@ -172,15 +194,33 @@
             >{editingCategory === cat.key ? '完了' : '＋ 編集'}</button>
           </div>
 
+          <!-- Search box -->
+          <div class="cm-search-row">
+            <input
+              class="fi cm-search-input"
+              placeholder="🔍 絞り込み…"
+              value={searchText[cat.key]}
+              oninput={e => searchText[cat.key] = (e.target as HTMLInputElement).value}
+            />
+            {#if searchText[cat.key]}
+              <span class="cm-search-count">{items.length}件</span>
+              <button class="cm-search-clear" onclick={() => searchText[cat.key] = ''}>✕</button>
+            {/if}
+          </div>
+
           <div class="cm-tags">
             {#each items as item, i}
+              {@const realIdx = customItems[cat.key].indexOf(item)}
               <span class="cm-tag" class:editing={editingCategory === cat.key}>
                 {item}
                 {#if editingCategory === cat.key}
-                  <button class="cm-tag-del" onclick={() => removeItem(cat.key, i)} aria-label="削除">×</button>
+                  <button class="cm-tag-del" onclick={() => removeItem(cat.key, realIdx)} aria-label="削除">×</button>
                 {/if}
               </span>
             {/each}
+            {#if items.length === 0}
+              <span class="cm-no-match">一致する項目がありません</span>
+            {/if}
           </div>
 
           {#if editingCategory === cat.key}
@@ -213,9 +253,21 @@
         <div class="cm-result-title">生成されたキャラクター</div>
         <div class="cm-result-cards">
           {#each categories as cat}
-            <div class="cm-result-card">
-              <div class="cm-result-cat">{cat.icon} {cat.label}</div>
+            <div class="cm-result-card" class:pinned={pinned[cat.key]}>
+              <div class="cm-result-cat-row">
+                <span class="cm-result-cat">{cat.icon} {cat.label}</span>
+                <button
+                  class="cm-pin-btn"
+                  class:active={pinned[cat.key]}
+                  onclick={() => pinned[cat.key] = !pinned[cat.key]}
+                  title={pinned[cat.key] ? '固定解除' : '固定（再生成でも変わらない）'}
+                  aria-label={pinned[cat.key] ? '固定解除' : '固定'}
+                >{pinned[cat.key] ? '📌' : '📍'}</button>
+              </div>
               <div class="cm-result-val">{result[cat.key]}</div>
+              {#if pinned[cat.key]}
+                <div class="cm-pin-label">固定中</div>
+              {/if}
             </div>
           {/each}
         </div>
@@ -254,11 +306,18 @@
   .cm-edit-btn:hover { color: var(--text); border-color: var(--accent) }
   .cm-edit-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent) }
 
+  .cm-search-row { display: flex; align-items: center; gap: 6px }
+  .cm-search-input { flex: 1; font-size: 12px; padding: 5px 10px; border-radius: 20px }
+  .cm-search-count { font-size: 11px; color: var(--muted); white-space: nowrap }
+  .cm-search-clear { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 2px 6px; border-radius: 50%; transition: color .1s }
+  .cm-search-clear:hover { color: var(--text) }
+
   .cm-tags   { display: flex; flex-wrap: wrap; gap: 6px }
   .cm-tag    { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--text) }
   .cm-tag.editing { padding-right: 4px }
   .cm-tag-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1; padding: 0 2px; transition: color .1s }
   .cm-tag-del:hover { color: var(--danger, #e05) }
+  .cm-no-match { font-size: 12px; color: var(--muted); font-style: italic; padding: 4px 2px }
 
   .cm-add-row { display: flex; gap: 8px; align-items: center }
   .cm-add-input { flex: 1; font-size: 13px }
@@ -280,9 +339,15 @@
   .cm-result { background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px }
   .cm-result-title { font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .5px }
   .cm-result-cards { display: flex; gap: 10px; flex-wrap: wrap }
-  .cm-result-card { flex: 1; min-width: 120px; background: var(--surface2); border-radius: 10px; padding: 12px 14px }
-  .cm-result-cat  { font-size: 11px; color: var(--muted); margin-bottom: 4px }
+  .cm-result-card { flex: 1; min-width: 120px; background: var(--surface2); border-radius: 10px; padding: 12px 14px; transition: border .15s; border: 2px solid transparent }
+  .cm-result-card.pinned { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface2)) }
+  .cm-result-cat-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px }
+  .cm-result-cat  { font-size: 11px; color: var(--muted) }
   .cm-result-val  { font-size: 15px; font-weight: 700 }
+  .cm-pin-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 0; opacity: .5; transition: opacity .15s, transform .1s }
+  .cm-pin-btn:hover { opacity: 1 }
+  .cm-pin-btn.active { opacity: 1; transform: rotate(-15deg) }
+  .cm-pin-label { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: .5px; margin-top: 4px }
   .cm-result-summary { font-size: 13px; color: var(--muted); line-height: 1.7; background: var(--surface2); border-radius: 8px; padding: 10px 14px }
   .cm-result-summary strong { color: var(--text) }
   .cm-result-actions { display: flex; gap: 8px; flex-wrap: wrap }

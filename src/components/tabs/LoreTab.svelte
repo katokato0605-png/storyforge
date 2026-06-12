@@ -6,13 +6,12 @@
   import type { LoreType } from '../../lib/db/schema'
   import { characterCategories } from '../../lib/characterTemplates'
 
-  type Tab = LoreType
+  type Tab = LoreType | 'world_lore'
   let activeTab = $state<Tab>('character')
 
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: 'character', icon: '👤', label: 'キャラクター' },
-    { id: 'world',     icon: '🌍', label: '世界観' },
-    { id: 'lore',      icon: '📝', label: 'その他' },
+    { id: 'world_lore', icon: '🌍', label: '世界観・その他' },
   ]
 
   let adding = $state(false)
@@ -74,10 +73,14 @@
     filterTag = ''
   })
 
+  const activeTypes = $derived<LoreType[]>(
+    activeTab === 'world_lore' ? ['world', 'lore'] : [activeTab as LoreType]
+  )
+
   const currentEntries = $derived(
     loreStore.entries.filter(e => {
       if (e.projectId !== projectStore.currentProjectId) return false
-      if (e.type !== activeTab) return false
+      if (!activeTypes.includes(e.type)) return false
       if (filterTag && !e.tags.includes(filterTag)) return false
       return true
     })
@@ -86,7 +89,7 @@
   const allTags = $derived(
     [...new Set(
       loreStore.entries
-        .filter(e => e.type === activeTab && e.projectId === projectStore.currentProjectId)
+        .filter(e => activeTypes.includes(e.type) && e.projectId === projectStore.currentProjectId)
         .flatMap(e => e.tags)
     )].sort()
   )
@@ -102,7 +105,8 @@
     const pid = projectStore.currentProjectId
     if (!pid || !newTitle.trim()) return
     const tags = newTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
-    await loreStore.create(pid, activeTab, newTitle.trim(), newContent.trim(), tags)
+    const type: LoreType = activeTab === 'world_lore' ? 'world' : (activeTab as LoreType)
+    await loreStore.create(pid, type, newTitle.trim(), newContent.trim(), tags)
     resetAddForm()
   }
 
@@ -341,11 +345,14 @@
                   </div>
                 {/if}
               {/each}
-              <button class="btn btn-ghost btn-sm tpl-insert-btn"
-                onclick={() => tplInsert(editContent, v => editContent = v)}
-                disabled={!Object.values(tplSelected).some(Boolean)}>
-                ＋ 内容に挿入
-              </button>
+              <div class="tpl-actions">
+                <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
+                <button class="btn btn-ghost btn-sm tpl-insert-btn"
+                  onclick={() => tplInsert(editContent, v => editContent = v)}
+                  disabled={!Object.values(tplSelected).some(Boolean)}>
+                  ＋ 内容に挿入
+                </button>
+              </div>
             </div>
           {/if}
         </div>

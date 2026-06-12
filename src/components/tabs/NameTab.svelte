@@ -3,6 +3,8 @@
   import { nanoid } from 'nanoid'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { ideaStore } from '../../lib/stores/ideaStore.svelte'
+  import { createHistory } from '../../lib/utils/history.svelte'
+  import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
 
   // ---- Types ----
   type SceneRole = '起' | '承' | '転' | '結' | '自由'
@@ -131,6 +133,7 @@
   let selectedChapterId = $state<string | null>(null)
   let showTmplMenu = $state(false)
   let beatEditId = $state<string | null>(null)
+  const chapterHist = createHistory<Chapter[]>()
 
   // Persistence
   let saveTimer: ReturnType<typeof setTimeout>
@@ -249,6 +252,7 @@
   )
 
   function addChapter() {
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const ch: Chapter = {
       id: nanoid(), title: '', theme: '', stateStart: '', stateEnd: '', beats: [],
     }
@@ -258,6 +262,7 @@
   }
 
   function deleteChapter(id: string) {
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     chapters = chapters.filter(c => c.id !== id)
     if (selectedChapterId === id) selectedChapterId = chapters[0]?.id ?? null
     save()
@@ -268,20 +273,36 @@
     save()
   }
 
-  function applyTemplate(key: keyof typeof CHAPTER_TEMPLATES) {
+  function applyTemplate(key: keyof typeof CHAPTER_TEMPLATES, targetChapterId?: string) {
     showTmplMenu = false
-    if (!selectedChapterId) return
-    const ch = chapters.find(c => c.id === selectedChapterId)
+    const chId = targetChapterId ?? selectedChapterId
+    if (!chId) return
+    const ch = chapters.find(c => c.id === chId)
     if (!ch) return
     if (ch.beats.length > 0 && !confirm('既存のビートをテンプレートで上書きしますか？')) return
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
       id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
     }))
-    chapters = chapters.map(c => c.id === selectedChapterId ? { ...c, beats: newBeats } : c)
+    chapters = chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c)
+    save()
+  }
+
+  function applyTemplateNewChapter(key: keyof typeof CHAPTER_TEMPLATES) {
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+    const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
+      id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
+    }))
+    const ch: Chapter = {
+      id: nanoid(), title: CHAPTER_TEMPLATES[key].label, theme: '', stateStart: '', stateEnd: '', beats: newBeats,
+    }
+    chapters = [...chapters, ch]
+    selectedChapterId = ch.id
     save()
   }
 
   function addBeat(chId: string) {
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const beat: ChapterBeat = { id: nanoid(), stage: '', title: '', memo: '' }
     chapters = chapters.map(c => c.id === chId ? { ...c, beats: [...c.beats, beat] } : c)
     beatEditId = beat.id
@@ -289,6 +310,7 @@
   }
 
   function deleteBeat(chId: string, beatId: string) {
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     chapters = chapters.map(c => c.id === chId
       ? { ...c, beats: c.beats.filter(b => b.id !== beatId) }
       : c
@@ -308,6 +330,7 @@
   function moveBeat(chId: string, idx: number, dir: -1 | 1) {
     const ch = chapters.find(c => c.id === chId)
     if (!ch) return
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const arr = [...ch.beats]
     const to = idx + dir
     if (to < 0 || to >= arr.length) return
@@ -315,6 +338,35 @@
     chapters = chapters.map(c => c.id === chId ? { ...c, beats: arr } : c)
     save()
   }
+
+  // ---- Chapter undo/redo ----
+  function chapterUndo() {
+    const prev = chapterHist.undo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+    if (!prev) return
+    chapters = prev
+    if (!prev.find(c => c.id === selectedChapterId)) selectedChapterId = prev[0]?.id ?? null
+    save()
+  }
+
+  function chapterRedo() {
+    const next = chapterHist.redo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+    if (!next) return
+    chapters = next
+    if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
+    save()
+  }
+
+  $effect(() => {
+    function handleKeydown(e: KeyboardEvent) {
+      if (subTab !== 'chapter') return
+      const ctrl = e.ctrlKey || e.metaKey
+      if (!ctrl) return
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); chapterUndo() }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); chapterRedo() }
+    }
+    document.addEventListener('keydown', handleKeydown)
+    return () => document.removeEventListener('keydown', handleKeydown)
+  })
 
   onMount(() => ideaStore.load())
 </script>
@@ -526,6 +578,9 @@
 
         <!-- Right: chapter detail -->
         <div class="nt-right">
+          <div class="nt-ch-toolbar">
+            <UndoRedoButtons canUndo={chapterHist.canUndo} canRedo={chapterHist.canRedo} onUndo={chapterUndo} onRedo={chapterRedo} />
+          </div>
           {#if selectedChapter}
             <div class="nt-right-header">
               <div class="nt-ep-fields">
@@ -628,7 +683,15 @@
               {/if}
             </div>
           {:else}
-            <div class="nt-empty">左から章を選んでください</div>
+            <div class="nt-ch-empty">
+              <div class="nt-ch-empty-icon">📖</div>
+              <div class="nt-ch-empty-msg">章がまだありません</div>
+              <div class="nt-ch-empty-actions">
+                <button class="btn btn-primary btn-sm" onclick={addChapter}>＋ 章を追加</button>
+                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('three_act')}>三幕構成で始める</button>
+                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('heros_journey')}>ヒーローズジャーニーで始める</button>
+              </div>
+            </div>
           {/if}
         </div>
       </div>
@@ -847,6 +910,15 @@
   .nt-beat-labels { display: flex; align-items: center; gap: 8px; flex: 1 }
   .nt-beat-title { font-size: 13px; font-weight: 600; color: var(--text) }
   .pb-stage-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--accent); color: #fff }
+
+  /* Chapter toolbar */
+  .nt-ch-toolbar { padding: 8px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 8px }
+
+  /* Chapter empty state */
+  .nt-ch-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 20px; color: var(--muted) }
+  .nt-ch-empty-icon { font-size: 36px }
+  .nt-ch-empty-msg { font-size: 14px; font-weight: 600; color: var(--text) }
+  .nt-ch-empty-actions { display: flex; flex-direction: column; align-items: center; gap: 8px }
 
   /* State row */
   .nt-state-row { display: flex; align-items: center; gap: 6px }

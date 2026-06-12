@@ -248,12 +248,6 @@
       </div>
       <div class="fs-body">
         <input
-          class="fi pb-input-stage"
-          value={overlayBeat.stage}
-          oninput={(e) => updateBeat(overlayId!, { stage: (e.target as HTMLInputElement).value }, true)}
-          placeholder="幕・段階（例：第一幕）"
-        />
-        <input
           class="fi pb-input-title"
           value={overlayBeat.title}
           oninput={(e) => updateBeat(overlayId!, { title: (e.target as HTMLInputElement).value }, true)}

@@ -108,6 +108,8 @@
         timelineEvents = []
       }
       loaded = true
+    }).catch(() => {
+      if (!cancelled) { beats = []; timelineEvents = []; loaded = true }
     })
     return () => { cancelled = true }
   })

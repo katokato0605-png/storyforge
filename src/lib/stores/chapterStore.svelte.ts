@@ -84,8 +84,8 @@ export const chapterStore = {
       await Promise.all(ids.map((id, i) => db.chapters.update(id, { order: i, updatedAt: now })))
     })
     chapters = ids
-      .map(id => chapters.find(c => c.id === id)!)
-      .filter(Boolean)
+      .map(id => chapters.find(c => c.id === id))
+      .filter((c): c is Chapter => c !== undefined)
       .map((c, i) => ({ ...c, order: i }))
   },
 }

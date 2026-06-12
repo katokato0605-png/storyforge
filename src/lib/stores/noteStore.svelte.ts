@@ -21,7 +21,10 @@ export const noteStore = {
     status = 'loading'
     _loadPromise = (async () => {
       try {
-        const rows = await db.projectNotes.where('projectId').equals(projectId).toArray()
+        const pid = projectId
+        const rows = await db.projectNotes.where('projectId').equals(pid).toArray()
+        // Discard result if the user switched projects while this load was in-flight
+        if (pid !== currentProjectId) return
         const map = new Map<NoteType, ProjectNote>()
         for (const r of rows) map.set(r.type, r)
         noteMap = map
@@ -36,6 +39,8 @@ export const noteStore = {
   },
 
   async save(projectId: string, type: NoteType, content: string) {
+    // Ignore debounced saves that fire after the user has already switched projects
+    if (projectId !== currentProjectId) return
     const now = Date.now()
     const existing = noteMap.get(type)
     if (existing) {

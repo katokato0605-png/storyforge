@@ -108,6 +108,8 @@
         events = []
       }
       loaded = true
+    }).catch(() => {
+      if (!cancelled) { events = []; loaded = true }
     })
     return () => { cancelled = true }
   })

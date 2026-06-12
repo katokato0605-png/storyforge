@@ -17,6 +17,11 @@ export async function pushSync(userId: string): Promise<void> {
   })
 }
 
+export async function cloudExists(userId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'syncs', userId))
+  return snap.exists()
+}
+
 export async function pullSync(userId: string): Promise<{ projects: number; chapters: number }> {
   const snap = await getDoc(doc(db, 'syncs', userId))
   if (!snap.exists()) throw new Error('クラウドにデータが見つかりません')

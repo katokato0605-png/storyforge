@@ -4,6 +4,8 @@
   import { exportAll } from '../../lib/utils/exportImport'
   import { createBackup } from '../../lib/utils/backup'
   import { isFSASupported, fsaStore, enableFileMode, disableFileMode, tryRestoreHandle, writeAutoSave } from '../../lib/utils/fileSystemAccess.svelte'
+  import { authStore } from '../../lib/stores/authStore.svelte'
+  import { autoSyncStore } from '../../lib/stores/autoSyncStore.svelte'
   import { onMount } from 'svelte'
 
   const fsaSupported = isFSASupported()
@@ -80,7 +82,20 @@
         aria-label="ファイル保存モード"
       >{fsaStore.active ? '📂' : '📁'}</button>
     {/if}
-    <button class="iBtn" onclick={() => appStore.openModal('sync')} title="デバイス間同期" aria-label="同期">🔄</button>
+    <button
+      class="iBtn sync-btn"
+      class:sync-ok={autoSyncStore.status === 'ok'}
+      class:sync-err={autoSyncStore.status === 'error'}
+      class:sync-ing={autoSyncStore.status === 'syncing'}
+      onclick={() => appStore.openModal('sync')}
+      title={authStore.user
+        ? autoSyncStore.status === 'ok' ? `同期済み ${autoSyncStore.lastSyncedAt?.toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit'}) ?? ''}`
+        : autoSyncStore.status === 'error' ? `同期エラー: ${autoSyncStore.errorMessage}`
+        : autoSyncStore.status === 'syncing' ? '同期中…'
+        : 'デバイス間同期'
+        : 'デバイス間同期'}
+      aria-label="同期"
+    >{autoSyncStore.status === 'ok' ? '✓' : autoSyncStore.status === 'syncing' ? '⟳' : autoSyncStore.status === 'error' ? '⚠' : '🔄'}</button>
     <button class="iBtn" onclick={handleBackup} title="バックアップ作成" aria-label="バックアップ">💾</button>
     <button class="iBtn" onclick={toggleTheme} title="テーマ切替" aria-label="テーマ切替">
       {appStore.theme === 'dark' ? '☀' : '🌙'}
@@ -104,4 +119,8 @@
   .search-btn{font-size:13px}
   #hr{margin-left:auto;display:flex;gap:5px;align-items:center;flex-shrink:0}
   .fsa-active{color:var(--accent)!important;border-color:var(--accent)!important}
+  .sync-ok { color: #4caf50 !important }
+  .sync-err { color: #f44336 !important }
+  .sync-ing { animation: spin 1s linear infinite }
+  @keyframes spin { to { transform: rotate(360deg) } }
 </style>

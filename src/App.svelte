@@ -13,6 +13,7 @@
   import { appStore } from './lib/stores/appStore.svelte'
   import { projectStore } from './lib/stores/projectStore.svelte'
   import { runMigrationIfNeeded } from './lib/db/migration'
+  import './lib/stores/autoSyncStore.svelte'
 
   let ready = $state(false)
 

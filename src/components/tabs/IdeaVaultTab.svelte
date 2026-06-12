@@ -204,7 +204,7 @@
           </div>
         {/if}
       </div>
-      <button class="btn btn-primary btn-sm" onclick={() => adding = !adding}>
+      <button class="btn btn-primary btn-sm" onclick={() => { if (adding) { adding = false; newContent = ''; newTags = '' } else { adding = true } }}>
         {adding ? 'キャンセル' : '＋ 追加'}
       </button>
     </div>

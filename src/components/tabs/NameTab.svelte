@@ -437,10 +437,14 @@
                   class:drag-over={epDs.dragOverIdx === idx}
                   class:dragging={epDs.dragIdx === idx}
                   draggable="true"
+                  data-drag-idx={idx}
                   ondragstart={() => epDs.start(idx)}
                   ondragover={(e) => epDs.over(e, idx)}
                   ondrop={() => dragEpisode(idx)}
                   ondragend={() => epDs.end()}
+                  ontouchstart={() => epDs.touchstart(idx)}
+                  ontouchmove={(e) => epDs.touchmove(e)}
+                  ontouchend={() => { const to = epDs.dragOverIdx; if (to !== null) dragEpisode(to); else epDs.end() }}
                 >
                   <span class="drag-handle-sm">⠿</span>
                   <button
@@ -535,10 +539,14 @@
                     class:dragging={sceneDs.dragIdx === idx}
                     class:drag-over={sceneDs.dragOverIdx === idx}
                     draggable="true"
+                    data-drag-idx={idx}
                     ondragstart={() => sceneDs.start(idx)}
                     ondragover={(e) => sceneDs.over(e, idx)}
                     ondrop={() => dragScene(selectedEpisode!.id, idx)}
                     ondragend={() => sceneDs.end()}
+                    ontouchstart={() => sceneDs.touchstart(idx)}
+                    ontouchmove={(e) => sceneDs.touchmove(e)}
+                    ontouchend={() => { const to = sceneDs.dragOverIdx; if (to !== null) dragScene(selectedEpisode!.id, to); else sceneDs.end() }}
                     onclick={() => sceneEditId = sceneEditId === scene.id ? null : scene.id}
                   >
                     <!-- Scene header row -->
@@ -623,10 +631,14 @@
                   class:drag-over={chDs.dragOverIdx === idx}
                   class:dragging={chDs.dragIdx === idx}
                   draggable="true"
+                  data-drag-idx={idx}
                   ondragstart={() => chDs.start(idx)}
                   ondragover={(e) => chDs.over(e, idx)}
                   ondrop={() => dragChapter(idx)}
                   ondragend={() => chDs.end()}
+                  ontouchstart={() => chDs.touchstart(idx)}
+                  ontouchmove={(e) => chDs.touchmove(e)}
+                  ontouchend={() => { const to = chDs.dragOverIdx; if (to !== null) dragChapter(to); else chDs.end() }}
                 >
                   <span class="drag-handle-sm">⠿</span>
                   <button
@@ -709,10 +721,14 @@
                     class:dragging={beatDs.dragIdx === idx}
                     class:drag-over={beatDs.dragOverIdx === idx}
                     draggable="true"
+                    data-drag-idx={idx}
                     ondragstart={() => beatDs.start(idx)}
                     ondragover={(e) => beatDs.over(e, idx)}
                     ondrop={() => dragBeat(selectedChapter!.id, idx)}
                     ondragend={() => beatDs.end()}
+                    ontouchstart={() => beatDs.touchstart(idx)}
+                    ontouchmove={(e) => beatDs.touchmove(e)}
+                    ontouchend={() => { const to = beatDs.dragOverIdx; if (to !== null) dragBeat(selectedChapter!.id, to); else beatDs.end() }}
                     onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}
                   >
                     <div class="nt-scene-top">

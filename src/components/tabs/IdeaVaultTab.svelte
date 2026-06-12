@@ -301,10 +301,14 @@
           class:dragging={ideaDs.dragIdx === idx}
           class:drag-over={ideaDs.dragOverIdx === idx}
           draggable="true"
+          data-drag-idx={idx}
           ondragstart={() => ideaDs.start(idx)}
           ondragover={(e) => ideaDs.over(e, idx)}
           ondrop={() => { const next = ideaDs.drop([...filtered], idx); if (next) saveIdeaOrder(next) }}
           ondragend={() => ideaDs.end()}
+          ontouchstart={() => ideaDs.touchstart(idx)}
+          ontouchmove={(e) => ideaDs.touchmove(e)}
+          ontouchend={() => { const to = ideaDs.dragOverIdx; if (to !== null) { const next = ideaDs.drop([...filtered], to); if (next) saveIdeaOrder(next) } else ideaDs.end() }}
           onclick={() => startEdit(idea)}
         >
           {#if idea.title}

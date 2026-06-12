@@ -302,10 +302,14 @@
             class:dragging={loreDs.dragIdx === idx}
             class:drag-over={loreDs.dragOverIdx === idx}
             draggable="true"
+            data-drag-idx={idx}
             ondragstart={() => loreDs.start(idx)}
             ondragover={(e) => loreDs.over(e, idx)}
             ondrop={() => { const next = loreDs.drop([...currentEntries], idx); if (next) saveLoreOrder(next) }}
             ondragend={() => loreDs.end()}
+            ontouchstart={() => loreDs.touchstart(idx)}
+            ontouchmove={(e) => loreDs.touchmove(e)}
+            ontouchend={() => { const to = loreDs.dragOverIdx; if (to !== null) { const next = loreDs.drop([...currentEntries], to); if (next) saveLoreOrder(next) } else loreDs.end() }}
             onclick={() => startEdit(entry)}
           >
             <div class="entry-title">{entry.title}</div>

@@ -216,10 +216,14 @@
             class:dragging={ds.dragIdx === idx}
             class:drag-over={ds.dragOverIdx === idx}
             draggable="true"
+            data-drag-idx={idx}
             ondragstart={() => ds.start(idx)}
             ondragover={(e) => ds.over(e, idx)}
             ondrop={() => dragReorder(idx)}
             ondragend={() => ds.end()}
+            ontouchstart={() => ds.touchstart(idx)}
+            ontouchmove={(e) => ds.touchmove(e)}
+            ontouchend={() => { const to = ds.dragOverIdx; if (to !== null) dragReorder(to); else ds.end() }}
           >
             <span class="drag-handle">⠿</span>
             <button class="pb-view" onclick={() => openOverlay(beat)}>

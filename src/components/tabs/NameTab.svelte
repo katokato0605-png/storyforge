@@ -106,22 +106,22 @@
     const key = storageKey
     loaded = false
     if (!key) return
+    let eps: Episode[] = []
+    let chs: Chapter[] = []
     try {
       const raw = localStorage.getItem(key)
       if (raw) {
         const parsed: NameData = JSON.parse(raw)
-        episodes = parsed.episodes ?? []
-        chapters = parsed.chapters ?? []
-      } else {
-        episodes = []
-        chapters = []
+        eps = parsed.episodes ?? []
+        chs = parsed.chapters ?? []
       }
     } catch {
-      episodes = []
-      chapters = []
+      // keep empty arrays
     }
-    selectedEpisodeId = episodes[0]?.id ?? null
-    selectedChapterId = chapters[0]?.id ?? null
+    episodes = eps
+    chapters = chs
+    selectedEpisodeId = eps[0]?.id ?? null
+    selectedChapterId = chs[0]?.id ?? null
     loaded = true
   })
 

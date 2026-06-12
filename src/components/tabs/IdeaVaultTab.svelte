@@ -103,24 +103,27 @@
   let showTemplateMenu = $state(false)
   let filterLinked = $state(false)
   let filterTag = $state('')
+  let newTitle = $state('')
   let newContent = $state('')
   let newTags = $state('')
   let adding = $state(false)
 
   let editId = $state<string | null>(null)
+  let editTitle = $state('')
   let editContent = $state('')
   let editTags = $state('')
 
-  function startEdit(idea: { id: string; content: string; tags: string[] }) {
+  function startEdit(idea: { id: string; title: string; content: string; tags: string[] }) {
     editId = idea.id
+    editTitle = idea.title ?? ''
     editContent = idea.content
     editTags = idea.tags.join(', ')
   }
 
   async function saveEdit() {
-    if (!editId || !editContent.trim()) return
+    if (!editId) return
     const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
-    await ideaStore.update(editId, { content: editContent.trim(), tags })
+    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags })
     editId = null
   }
 
@@ -146,9 +149,10 @@
   const allTags = $derived([...new Set(ideaStore.ideas.flatMap(i => i.tags))].sort())
 
   async function addIdea() {
-    if (!newContent.trim()) return
+    if (!newTitle.trim() && !newContent.trim()) return
     const tags = newTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
-    await ideaStore.create(newContent.trim(), tags, filterLinked ? (projectStore.currentProjectId ?? null) : null)
+    await ideaStore.create(newTitle.trim(), newContent.trim(), tags, filterLinked ? (projectStore.currentProjectId ?? null) : null)
+    newTitle = ''
     newContent = ''
     newTags = ''
     adding = false
@@ -204,7 +208,7 @@
           </div>
         {/if}
       </div>
-      <button class="btn btn-primary btn-sm" onclick={() => { if (adding) { adding = false; newContent = ''; newTags = '' } else { adding = true } }}>
+      <button class="btn btn-primary btn-sm" onclick={() => { if (adding) { adding = false; newTitle = ''; newContent = ''; newTags = '' } else { adding = true } }}>
         {adding ? 'キャンセル' : '＋ 追加'}
       </button>
     </div>
@@ -212,14 +216,22 @@
 
   {#if adding}
     <div class="add-form">
+      <input
+        class="fi idea-title-input"
+        value={newTitle}
+        oninput={(e) => newTitle = (e.target as HTMLInputElement).value}
+        onkeydown={handleAddKeydown}
+        placeholder="タイトル"
+        aria-label="タイトル"
+      />
       <textarea
         class="fta"
         value={newContent}
         oninput={(e) => newContent = (e.target as HTMLTextAreaElement).value}
         onkeydown={handleAddKeydown}
-        placeholder="アイデアを入力… (Ctrl+Enter で保存)"
+        placeholder="詳細（任意）… (Ctrl+Enter で保存)"
         rows="3"
-        aria-label="新しいアイデア"
+        aria-label="詳細"
       ></textarea>
       <div class="add-row">
         <input
@@ -229,7 +241,7 @@
           placeholder="タグ（カンマ区切り）"
           aria-label="タグ"
         />
-        <button class="btn btn-primary btn-sm" onclick={addIdea} disabled={!newContent.trim()}>保存</button>
+        <button class="btn btn-primary btn-sm" onclick={addIdea} disabled={!newTitle.trim() && !newContent.trim()}>保存</button>
       </div>
     </div>
   {/if}
@@ -248,13 +260,21 @@
         <div class="idea-card">
           {#if editId === idea.id}
             <div class="edit-form">
+              <input
+                class="fi idea-title-input"
+                value={editTitle}
+                oninput={(e) => editTitle = (e.target as HTMLInputElement).value}
+                onkeydown={handleEditKeydown}
+                placeholder="タイトル"
+                aria-label="タイトル"
+              />
               <textarea
                 class="fta"
                 value={editContent}
                 oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
                 onkeydown={handleEditKeydown}
-                rows="6"
-                aria-label="アイデアを編集"
+                rows="5"
+                aria-label="詳細を編集"
               ></textarea>
               <div class="add-row">
                 <input
@@ -270,7 +290,12 @@
             </div>
           {:else}
             <div class="idea-body">
-              <p class="idea-text">{idea.content}</p>
+              {#if idea.title}
+                <div class="idea-title">{idea.title}</div>
+              {/if}
+              {#if idea.content}
+                <p class="idea-text">{idea.content}</p>
+              {/if}
               {#if idea.tags.length > 0}
                 <div class="tags">
                   {#each idea.tags as tag}
@@ -321,8 +346,11 @@
   .edit-form   { flex: 1; min-width: 0 }
   .edit-form .fta { margin-bottom: 8px }
   .iBtn.linked { color: var(--accent); border-color: var(--accent) }
-  .tag-btn     { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
-  .tag-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent) }
+  .tag-btn        { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
+  .tag-btn:hover  { background: var(--accent); color: #fff; border-color: var(--accent) }
+  .idea-title     { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text) }
+  .idea-title-input { font-size: 14px; font-weight: 600; margin-bottom: 4px }
+  .idea-text      { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }
   .tmpl-wrap   { position: relative }
   .tmpl-backdrop { position: fixed; inset: 0; z-index: 10 }
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }

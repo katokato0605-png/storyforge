@@ -20,14 +20,14 @@ export const ideaStore = {
     }
   },
 
-  async create(content: string, tags: string[] = [], linkedProjectId: string | null = null) {
-    const idea: Idea = { id: nanoid(), content, tags, linkedProjectId, createdAt: Date.now() }
+  async create(title: string, content: string, tags: string[] = [], linkedProjectId: string | null = null) {
+    const idea: Idea = { id: nanoid(), title, content, tags, linkedProjectId, createdAt: Date.now() }
     await db.ideas.put(idea)
     ideas = [idea, ...ideas]
     return idea
   },
 
-  async update(id: string, patch: Partial<Pick<Idea, 'content' | 'tags' | 'linkedProjectId'>>) {
+  async update(id: string, patch: Partial<Pick<Idea, 'title' | 'content' | 'tags' | 'linkedProjectId'>>) {
     await db.ideas.update(id, patch)
     ideas = ideas.map(i => i.id === id ? { ...i, ...patch } : i)
   },

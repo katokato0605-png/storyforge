@@ -178,62 +178,63 @@
         </div>
       {:else}
         {#each currentEntries as entry (entry.id)}
-          <div class="entry-card">
-            {#if editId === entry.id}
-              <div class="edit-form">
-                <input
-                  class="fi"
-                  value={editTitle}
-                  oninput={(e) => editTitle = (e.target as HTMLInputElement).value}
-                  onkeydown={handleEditKeydown}
-                  placeholder="タイトル"
-                  aria-label="タイトル"
-                />
-                <textarea
-                  class="fta"
-                  value={editContent}
-                  oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
-                  onkeydown={handleEditKeydown}
-                  rows="5"
-                  aria-label="詳細を編集"
-                ></textarea>
-                <div class="add-row">
-                  <input
-                    class="fi"
-                    value={editTags}
-                    oninput={(e) => editTags = (e.target as HTMLInputElement).value}
-                    placeholder="タグ（カンマ区切り）"
-                    aria-label="タグ"
-                  />
-                  <button class="btn btn-ghost btn-sm" onclick={() => editId = null}>キャンセル</button>
-                  <button class="btn btn-primary btn-sm" onclick={saveEdit}>保存</button>
-                </div>
-              </div>
-            {:else}
-              <div class="entry-body">
-                <div class="entry-title">{entry.title}</div>
-                {#if entry.content}
-                  <p class="entry-text">{entry.content}</p>
-                {/if}
-                {#if entry.tags.length > 0}
-                  <div class="tags">
-                    {#each entry.tags as tag}
-                      <button
-                        class="tag tag-btn"
-                        onclick={() => filterTag = filterTag === tag ? '' : tag}
-                      >{tag}</button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-              <div class="entry-actions">
-                <button class="iBtn" onclick={() => startEdit(entry)} aria-label="編集">✎</button>
-                <button class="iBtn del" onclick={() => confirmDelete(entry.id)} aria-label="削除">✕</button>
+          <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+          <div class="entry-card" onclick={() => startEdit(entry)}>
+            <div class="entry-title">{entry.title}</div>
+            {#if entry.content}
+              <p class="entry-text">{entry.content}</p>
+            {/if}
+            {#if entry.tags.length > 0}
+              <div class="tags">
+                {#each entry.tags as tag}
+                  <span class="tag">{tag}</span>
+                {/each}
               </div>
             {/if}
           </div>
         {/each}
       {/if}
+    </div>
+  </div>
+{/if}
+
+{#if editId}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="fs-overlay" onclick={(e) => { if (e.target === e.currentTarget) editId = null }}>
+    <div class="fs-panel" role="dialog" aria-modal="true">
+      <div class="fs-header">
+        <input
+          class="fi fs-title-input"
+          value={editTitle}
+          oninput={(e) => editTitle = (e.target as HTMLInputElement).value}
+          onkeydown={handleEditKeydown}
+          placeholder="タイトル"
+          aria-label="タイトル"
+        />
+        <button class="iBtn fs-del" onclick={() => { const id = editId!; editId = null; confirmDelete(id) }} aria-label="削除">🗑</button>
+        <button class="iBtn fs-close" onclick={() => editId = null} aria-label="閉じる">✕</button>
+      </div>
+      <div class="fs-body">
+        <textarea
+          class="fta fs-textarea"
+          value={editContent}
+          oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
+          onkeydown={handleEditKeydown}
+          placeholder="詳細（Ctrl+Enter で保存）"
+          aria-label="詳細"
+        ></textarea>
+      </div>
+      <div class="fs-footer">
+        <input
+          class="fi fs-tags-input"
+          value={editTags}
+          oninput={(e) => editTags = (e.target as HTMLInputElement).value}
+          placeholder="タグ（カンマ区切り）"
+          aria-label="タグ"
+        />
+        <button class="btn btn-ghost btn-sm" onclick={() => editId = null}>キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick={saveEdit}>保存</button>
+      </div>
     </div>
   </div>
 {/if}
@@ -268,12 +269,19 @@
   .add-row .fi { flex: 1 }
 
   .entry-list  { flex: 1; overflow-y: auto; padding: 12px 20px }
-  .entry-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; display: flex; gap: 10px; align-items: flex-start }
-  .entry-body  { flex: 1; min-width: 0 }
-  .entry-title { font-size: 14px; font-weight: 700; margin-bottom: 4px }
-  .entry-text  { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px }
-  .entry-actions { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0 }
-  .edit-form   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px }
-  .tag-btn     { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
-  .tag-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent) }
+  .entry-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s }
+  .entry-card:hover { border-color: var(--accent) }
+  .entry-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; transition: color .15s }
+  .entry-card:hover .entry-title { color: var(--accent) }
+  .entry-text  { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }
+
+  .fs-overlay  { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .fs-panel    { background: var(--surface); border-radius: 14px; width: 100%; max-width: 720px; height: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.3) }
+  .fs-header   { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .fs-title-input { flex: 1; font-size: 18px; font-weight: 700; border: none; background: none; outline: none; color: var(--text); font-family: inherit }
+  .fs-del, .fs-close { color: var(--muted) }
+  .fs-body     { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 16px 20px }
+  .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; border: none; background: none; outline: none; color: var(--text); font-family: inherit; width: 100% }
+  .fs-footer   { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap }
+  .fs-tags-input { flex: 1; min-width: 120px; font-size: 13px }
 </style>

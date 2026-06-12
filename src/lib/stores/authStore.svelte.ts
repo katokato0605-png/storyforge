@@ -1,28 +1,25 @@
-import { firebaseAuth, googleProvider } from '../firebase'
-import {
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth'
+import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
+import { auth, googleProvider } from '../firebase'
 
-let user = $state<User | null>(null)
-let loading = $state(true)
+function createAuthStore() {
+  let user = $state<User | null>(null)
+  let loading = $state(true)
 
-onAuthStateChanged(firebaseAuth, (u) => {
-  user = u
-  loading = false
-})
+  onAuthStateChanged(auth, (u) => {
+    user = u
+    loading = false
+  })
 
-export const authStore = {
-  get user()    { return user },
-  get loading() { return loading },
-
-  async signIn() {
-    await signInWithPopup(firebaseAuth, googleProvider)
-  },
-
-  async signOut() {
-    await signOut(firebaseAuth)
-  },
+  return {
+    get user() { return user },
+    get loading() { return loading },
+    async signIn() {
+      await signInWithPopup(auth, googleProvider)
+    },
+    async signOut() {
+      await signOut(auth)
+    },
+  }
 }
+
+export const authStore = createAuthStore()

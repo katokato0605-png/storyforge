@@ -7,6 +7,7 @@
     { id: 'lore',     icon: '📖', label: '設定' },
     { id: 'ideas',    icon: '💡', label: 'アイデア' },
     { id: 'charmaker', icon: '🎲', label: 'キャラメーカー' },
+    { id: 'name',      icon: '📝', label: 'ネーム' },
   ]
 </script>
 

@@ -27,45 +27,11 @@
     color: string
   }
 
-  const TEMPLATES = {
-    three_act: {
-      label: '三幕構成（8ビート）',
-      beats: [
-        { stage: '第一幕', title: '日常世界',     hint: '主人公の普段の生活・性格・欲求を描く。読者がキャラに感情移入するための土台。' },
-        { stage: '第一幕', title: 'きっかけ',     hint: '主人公の日常を揺るがす出来事が起きる。物語を動かすトリガー。' },
-        { stage: '第一幕', title: '決意',         hint: '主人公が「行動する」と決める瞬間。ここで第一幕が終わり、物語が加速する。' },
-        { stage: '第二幕', title: '新世界へ',     hint: '主人公が未知の環境・状況に飛び込む。新たなルール・人物・試練との出会い。' },
-        { stage: '第二幕', title: '中間転換点',   hint: '物語の折り返し地点。主人公の目標や状況が大きく変化し、後半への転換が起きる。' },
-        { stage: '第二幕', title: '最大の危機',   hint: '主人公がどん底に落ちる瞬間。失敗・喪失・絶望を描き、クライマックスへの期待を高める。' },
-        { stage: '第三幕', title: 'クライマックス', hint: '物語の頂点。主人公が最大の障害に立ち向かい、内的変化を体現する決戦。' },
-        { stage: '第三幕', title: '解決',         hint: '戦いの後の世界を描く。変化した主人公の新しい日常・余韻・テーマの着地点。' },
-      ],
-    },
-    heros_journey: {
-      label: 'ヒーローズジャーニー（12段階）',
-      beats: [
-        { stage: '出発', title: '日常世界',         hint: '冒険前の主人公の普通の生活。後のドラマとの対比を作る舞台設定。' },
-        { stage: '出発', title: '冒険への召喚',     hint: '主人公に使命・問題・誘いが訪れる。物語が動き出す最初の呼びかけ。' },
-        { stage: '出発', title: '召喚の拒否',       hint: '主人公が恐れや義務感から冒険を断る。内的葛藤を表すリアルな反応。' },
-        { stage: '出発', title: '師との出会い',     hint: '主人公を導く存在（人物・知識・道具など）が現れ、旅への準備が整う。' },
-        { stage: '出発', title: '第一関門突破',     hint: '日常世界を離れ、未知の領域に踏み込む。後戻りできない決断。' },
-        { stage: 'イニシエーション', title: 'テスト・仲間・敵', hint: '新しい世界でのルールを学ぶ。味方と敵を見極め、力を試される連続的な試練。' },
-        { stage: 'イニシエーション', title: '最深部への接近', hint: '最大の試練が待つ場所へ近づく。緊張感が最高潮になる準備段階。' },
-        { stage: 'イニシエーション', title: '最大の試練',     hint: '主人公が「死」（肉体的・精神的）に最も近づく瞬間。ここを乗り越えることで真の成長が生まれる。' },
-        { stage: 'イニシエーション', title: '報酬',           hint: '試練を乗り越えた主人公が宝（物・知識・愛など）を手に入れる。束の間の達成感。' },
-        { stage: '帰還', title: '帰路',             hint: '宝を持って日常世界に戻ろうとするが、まだ追手や障害が残っている。' },
-        { stage: '帰還', title: '復活',             hint: '最後の浄化・試練。主人公が完全に変容し、旧来の自分が「死に」新しい自分が生まれる。' },
-        { stage: '帰還', title: '宝を持っての帰還', hint: '変容した主人公が日常世界に戻り、得たものを仲間や社会に還元する。物語の締めくくり。' },
-      ],
-    },
-  } as const
-
   let beats = $state<PlotBeat[]>([])
   let timelineEvents = $state<TimelineEvent[]>([])
   let overlayId = $state<string | null>(null)
   let overlaySnapshot = $state<PlotBeat | null>(null)
   let loaded = $state(false)
-  let showTemplateMenu = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
 
   const hist = createHistory<PlotBeat[]>()
@@ -224,23 +190,6 @@
     save(arr)
   }
 
-  function applyTemplate(key: keyof typeof TEMPLATES) {
-    showTemplateMenu = false
-    if (beats.length > 0 && !confirm('既存のビートをテンプレートで上書きしますか？')) return
-    hist.push(beats.map(b => ({ ...b })))
-    const newBeats: PlotBeat[] = TEMPLATES[key].beats.map(b => ({
-      id: nanoid(),
-      stage: b.stage,
-      title: b.title,
-      description: (b as { hint?: string }).hint ?? '',
-      timelineEventId: null,
-    }))
-    beats = newBeats
-    overlayId = null
-    overlaySnapshot = null
-    save(newBeats)
-  }
-
   function linkedEventLabel(eventId: string | null): string {
     if (!eventId) return ''
     const ev = timelineEvents.find(e => e.id === eventId)
@@ -257,24 +206,6 @@
     <div class="pb-toolbar">
       <UndoRedoButtons canUndo={hist.canUndo} canRedo={hist.canRedo} onUndo={undo} onRedo={redo} />
       <button class="btn btn-primary btn-sm" onclick={addBeat}>＋ ビートを追加</button>
-      <div class="pb-tmpl-wrap">
-        <button
-          class="btn btn-ghost btn-sm"
-          onclick={() => showTemplateMenu = !showTemplateMenu}
-        >テンプレート ▾</button>
-        {#if showTemplateMenu}
-          <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-          <div class="pb-backdrop" onclick={() => showTemplateMenu = false}></div>
-          <div class="pb-tmpl-menu">
-            {#each Object.entries(TEMPLATES) as [key, tmpl]}
-              <button
-                class="pb-tmpl-item"
-                onclick={() => applyTemplate(key as keyof typeof TEMPLATES)}
-              >{tmpl.label}</button>
-            {/each}
-          </div>
-        {/if}
-      </div>
     </div>
 
     {#if beats.length === 0}
@@ -363,12 +294,6 @@
   .pb-wrap { padding: 16px 20px 80px; max-width: 640px; margin: 0 auto }
 
   .pb-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px }
-
-  .pb-tmpl-wrap { position: relative }
-  .pb-backdrop { position: fixed; inset: 0; z-index: 10 }
-  .pb-tmpl-menu { position: absolute; top: calc(100% + 4px); left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 220px; overflow: hidden }
-  .pb-tmpl-item { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text); font-family: inherit }
-  .pb-tmpl-item:hover { background: var(--surface2) }
 
   .pb-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px 20px; color: var(--muted) }
   .pb-empty-icon { font-size: 36px }

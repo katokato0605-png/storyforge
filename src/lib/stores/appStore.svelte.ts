@@ -1,4 +1,4 @@
-export type TabId = 'plot' | 'timeline' | 'lore' | 'ideas' | 'charmaker'
+export type TabId = 'plot' | 'timeline' | 'lore' | 'ideas' | 'charmaker' | 'name'
 export type Theme = 'dark' | 'light'
 
 let activeTab = $state<TabId>('plot')

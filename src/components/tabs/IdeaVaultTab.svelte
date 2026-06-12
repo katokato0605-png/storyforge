@@ -178,6 +178,13 @@
   }
 </script>
 
+<datalist id="idea-tag-suggestions">
+  <option value="書きたいシーン"></option>
+  {#each allTags.filter(t => t !== '書きたいシーン') as tag}
+    <option value={tag}></option>
+  {/each}
+</datalist>
+
 <div class="tab-wrap">
   <div class="tab-header">
     <h2 class="tab-title">💡 アイデアVault</h2>
@@ -236,6 +243,7 @@
       <div class="add-row">
         <input
           class="fi"
+          list="idea-tag-suggestions"
           value={newTags}
           oninput={(e) => newTags = (e.target as HTMLInputElement).value}
           placeholder="タグ（カンマ区切り）"
@@ -307,6 +315,7 @@
       <div class="fs-footer">
         <input
           class="fi fs-tags-input"
+          list="idea-tag-suggestions"
           value={editTags}
           oninput={(e) => editTags = (e.target as HTMLInputElement).value}
           placeholder="タグ（カンマ区切り）"

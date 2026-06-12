@@ -41,6 +41,15 @@
     return cat.items.filter(item => item.toLowerCase().includes(q))
   }
 
+  function tplGenerate() {
+    const next: Record<string, string> = {}
+    for (const cat of characterCategories) {
+      next[cat.key] = cat.items[Math.floor(Math.random() * cat.items.length)]
+    }
+    tplSelected = next
+    tplPickerOpen = null
+  }
+
   function tplInsert(targetContent: string, setter: (v: string) => void) {
     const lines: string[] = []
     for (const cat of characterCategories) {
@@ -216,11 +225,14 @@
                     </div>
                   {/if}
                 {/each}
-                <button class="btn btn-ghost btn-sm tpl-insert-btn"
-                  onclick={() => tplInsert(newContent, v => newContent = v)}
-                  disabled={!Object.values(tplSelected).some(Boolean)}>
-                  ＋ 内容に挿入
-                </button>
+                <div class="tpl-actions">
+                  <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
+                  <button class="btn btn-ghost btn-sm tpl-insert-btn"
+                    onclick={() => tplInsert(newContent, v => newContent = v)}
+                    disabled={!Object.values(tplSelected).some(Boolean)}>
+                    ＋ 内容に挿入
+                  </button>
+                </div>
               </div>
             {/if}
           </div>
@@ -416,7 +428,10 @@
   .tpl-item     { background: none; border: none; cursor: pointer; text-align: left; padding: 5px 10px; font-size: 12px; color: var(--text); font-family: inherit; transition: background .1s }
   .tpl-item:hover { background: var(--surface2) }
   .tpl-item.current { color: var(--accent); font-weight: 700 }
-  .tpl-insert-btn { align-self: flex-end }
+  .tpl-actions    { display: flex; align-items: center; gap: 8px; justify-content: flex-end }
+  .btn-tpl-gen    { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 5px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .15s }
+  .btn-tpl-gen:hover { opacity: .85 }
+  .tpl-insert-btn { align-self: auto }
 
   .fs-tpl { padding: 0 20px 8px; flex-shrink: 0 }
 </style>

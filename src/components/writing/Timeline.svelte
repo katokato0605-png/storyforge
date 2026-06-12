@@ -34,6 +34,18 @@
   let overlaySnapshot = $state<TimelineEvent | null>(null)
   let loaded = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
+  let historyMode = $state(false)
+
+  $effect(() => {
+    const pid = projectId
+    const saved = localStorage.getItem(`sf_tl_mode_${pid}`)
+    historyMode = saved === '1'
+  })
+
+  function toggleMode() {
+    historyMode = !historyMode
+    localStorage.setItem(`sf_tl_mode_${projectId}`, historyMode ? '1' : '0')
+  }
 
   const hist = createHistory<TimelineEvent[]>()
 
@@ -215,20 +227,26 @@
   <div class="tl-wrap">
     <div class="tl-toolbar">
       <UndoRedoButtons canUndo={hist.canUndo} canRedo={hist.canRedo} onUndo={undo} onRedo={redo} />
+      <button
+        class="tl-mode-btn"
+        class:active={historyMode}
+        onclick={toggleMode}
+        title={historyMode ? '通常モードに切替' : '世界史モードに切替'}
+      >{historyMode ? '📜 世界史' : '🕐 通常'}</button>
     </div>
-    <div class="tl-list">
-      {#each events as ev, idx (ev.id)}
-        <div class="tl-row">
-          <div class="tl-spine">
-            <div class="tl-dot" style="background:{ev.color}"></div>
-            {#if idx < events.length - 1}<div class="tl-line"></div>{/if}
-          </div>
 
-          <div class="tl-card">
-            <button class="tl-view-body" onclick={() => openOverlay(ev)}>
-              <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
-              <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
-              {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
+    {#if historyMode}
+      <!-- 世界史モード：縦型年代リスト -->
+      <div class="tl-history">
+        {#each events as ev, idx (ev.id)}
+          <div class="tl-h-row">
+            <div class="tl-h-era-col">
+              <span class="tl-h-era" style="color:{ev.color}">{ev.label || '─'}</span>
+              {#if idx < events.length - 1}<div class="tl-h-line"></div>{/if}
+            </div>
+            <button class="tl-h-card" onclick={() => openOverlay(ev)}>
+              <div class="tl-h-title">{ev.title || '（タイトル未設定）'}</div>
+              {#if ev.note}<div class="tl-h-note">{ev.note}</div>{/if}
               {#if linkedBeats(ev.id).length > 0}
                 <div class="tl-plot-badges">
                   {#each linkedBeats(ev.id) as beat}
@@ -242,10 +260,41 @@
               <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
             </div>
           </div>
-        </div>
-      {/each}
-    </div>
-    <button class="tl-add-btn" onclick={addEvent}>＋ イベントを追加</button>
+        {/each}
+      </div>
+    {:else}
+      <!-- 通常モード -->
+      <div class="tl-list">
+        {#each events as ev, idx (ev.id)}
+          <div class="tl-row">
+            <div class="tl-spine">
+              <div class="tl-dot" style="background:{ev.color}"></div>
+              {#if idx < events.length - 1}<div class="tl-line"></div>{/if}
+            </div>
+
+            <div class="tl-card">
+              <button class="tl-view-body" onclick={() => openOverlay(ev)}>
+                <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
+                <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
+                {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
+                {#if linkedBeats(ev.id).length > 0}
+                  <div class="tl-plot-badges">
+                    {#each linkedBeats(ev.id) as beat}
+                      <span class="tl-plot-badge">📋 {beat.title || '（タイトル未設定）'}</span>
+                    {/each}
+                  </div>
+                {/if}
+              </button>
+              <div class="tl-view-acts">
+                <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
+                <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    <button class="tl-add-btn" class:tl-add-btn-history={historyMode} onclick={addEvent}>＋ イベントを追加</button>
   </div>
 {/if}
 
@@ -306,8 +355,44 @@
   .tl-empty-icon { font-size: 36px }
   .tl-empty-msg { font-size: 14px }
 
-  .tl-wrap { padding: 16px 20px 80px; max-width: 640px; margin: 0 auto }
-  .tl-toolbar { margin-bottom: 12px }
+  .tl-wrap { padding: 16px 20px 80px; max-width: 720px; margin: 0 auto }
+  .tl-toolbar { margin-bottom: 12px; display: flex; align-items: center; gap: 8px }
+
+  .tl-mode-btn {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: none; cursor: pointer; font-size: 12px; color: var(--muted);
+    font-family: inherit; transition: .1s;
+  }
+  .tl-mode-btn:hover { color: var(--text); background: var(--surface2) }
+  .tl-mode-btn.active { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border-color: var(--accent) }
+
+  /* 世界史モード */
+  .tl-history { display: flex; flex-direction: column }
+  .tl-h-row { display: flex; gap: 0; align-items: flex-start }
+  .tl-h-era-col {
+    width: 130px; min-width: 130px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: flex-end;
+    padding-right: 16px; padding-top: 14px;
+  }
+  .tl-h-era {
+    font-size: 12px; font-weight: 700; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
+  }
+  .tl-h-line {
+    width: 2px; flex: 1; min-height: 16px;
+    background: var(--border); margin-top: 6px; align-self: center;
+  }
+  .tl-h-card {
+    flex: 1; margin-bottom: 8px; margin-left: 0;
+    border-left: 3px solid var(--border);
+    padding: 10px 14px; cursor: pointer; background: none; border-top: none; border-right: none; border-bottom: none;
+    text-align: left; font-family: inherit; color: inherit;
+    transition: border-color .15s;
+  }
+  .tl-h-card:hover { border-left-color: var(--accent) }
+  .tl-h-title { font-size: 14px; font-weight: 600; color: var(--text) }
+  .tl-h-note { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; line-height: 1.6 }
+  .tl-add-btn-history { margin-left: 146px; width: calc(100% - 146px) }
   .tl-list { display: flex; flex-direction: column }
 
   .tl-row { display: flex; gap: 12px; align-items: flex-start }

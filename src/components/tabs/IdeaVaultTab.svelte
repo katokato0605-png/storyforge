@@ -289,7 +289,8 @@
               </div>
             </div>
           {:else}
-            <div class="idea-body">
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div class="idea-body" onclick={() => startEdit(idea)} title="クリックして編集">
               {#if idea.title}
                 <div class="idea-title">{idea.title}</div>
               {/if}
@@ -301,14 +302,13 @@
                   {#each idea.tags as tag}
                     <button
                       class="tag tag-btn"
-                      onclick={() => filterTag = filterTag === tag ? '' : tag}
+                      onclick={(e) => { e.stopPropagation(); filterTag = filterTag === tag ? '' : tag }}
                     >{tag}</button>
                   {/each}
                 </div>
               {/if}
             </div>
             <div class="idea-actions">
-              <button class="iBtn" onclick={() => startEdit(idea)} aria-label="編集">✎</button>
               {#if projectStore.currentProjectId}
                 <button
                   class="iBtn"
@@ -348,7 +348,9 @@
   .iBtn.linked { color: var(--accent); border-color: var(--accent) }
   .tag-btn        { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
   .tag-btn:hover  { background: var(--accent); color: #fff; border-color: var(--accent) }
-  .idea-title     { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text) }
+  .idea-body      { cursor: pointer }
+  .idea-body:hover .idea-title { color: var(--accent) }
+  .idea-title     { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text); transition: color .15s }
   .idea-title-input { font-size: 14px; font-weight: 600; margin-bottom: 4px }
   .idea-text      { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }
   .tmpl-wrap   { position: relative }

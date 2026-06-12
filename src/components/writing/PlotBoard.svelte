@@ -242,41 +242,42 @@
   <div class="fs-overlay" onclick={(e) => { if (e.target === e.currentTarget) cancelEdit() }}>
     <div class="fs-panel" role="dialog" aria-modal="true">
       <div class="fs-header">
-        <span class="fs-header-title">{overlayBeat.title || '（タイトル未設定）'}</span>
-        <button class="iBtn del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteBeat(id) }} aria-label="削除">🗑</button>
-        <button class="iBtn" onclick={cancelEdit} aria-label="閉じる">✕</button>
-      </div>
-      <div class="fs-body">
         <input
-          class="fi pb-input-title"
+          class="fs-title-input"
           value={overlayBeat.title}
           oninput={(e) => updateBeat(overlayId!, { title: (e.target as HTMLInputElement).value }, true)}
           placeholder="ビートのタイトル"
         />
+        <button class="iBtn del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteBeat(id) }} aria-label="削除">🗑</button>
+        <button class="iBtn" onclick={cancelEdit} aria-label="閉じる">✕</button>
+      </div>
+      <div class="fs-body">
         <textarea
           class="fta fs-textarea"
           value={overlayBeat.description}
           oninput={(e) => updateBeat(overlayId!, { description: (e.target as HTMLTextAreaElement).value }, true)}
-          placeholder="あらすじ・詳細（任意）"
+          placeholder="あらすじ・詳細を書く…"
         ></textarea>
-        <div class="pb-tl-row">
-          <label class="pb-tl-label" for="tl-select-{overlayBeat.id}">タイムライン連携</label>
+      </div>
+      <div class="fs-footer">
+        <div class="fs-footer-left">
+          <label class="pb-tl-label" for="tl-select-{overlayBeat.id}">🕐</label>
           <select
             id="tl-select-{overlayBeat.id}"
-            class="fi pb-select"
+            class="pb-select-sm"
             value={overlayBeat.timelineEventId ?? ''}
             onchange={(e) => updateBeat(overlayId!, { timelineEventId: (e.target as HTMLSelectElement).value || null })}
           >
-            <option value="">（なし）</option>
+            <option value="">タイムライン連携なし</option>
             {#each timelineEvents as ev}
               <option value={ev.id}>{ev.label ? `${ev.label} — ` : ''}{ev.title || '（タイトル未設定）'}</option>
             {/each}
           </select>
         </div>
-      </div>
-      <div class="fs-footer">
-        <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
-        <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
+        <div class="fs-footer-right">
+          <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
+          <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
+        </div>
       </div>
     </div>
   </div>
@@ -313,16 +314,18 @@
   /* Overlay */
   .fs-overlay { position: fixed; inset: 0; z-index: 200; background: var(--surface); display: flex; align-items: stretch; justify-content: stretch }
   .fs-panel { background: var(--surface); border-radius: 0; width: 100%; height: 100%; display: flex; flex-direction: column }
-  .fs-header { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
-  .fs-header-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-  .fs-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; overflow-y: auto }
-  .pb-input-stage { font-size: 12px }
-  .pb-input-title { font-size: 16px; font-weight: 700 }
-  .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; min-height: 120px }
-  .pb-tl-row { display: flex; flex-direction: column; gap: 4px }
-  .pb-tl-label { font-size: 11px; color: var(--muted); font-weight: 600 }
-  .pb-select { font-size: 13px }
-  .fs-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0 }
+  .fs-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .fs-title-input { flex: 1; background: none; border: none; outline: none; font-size: 16px; font-weight: 700; color: var(--text); font-family: inherit; min-width: 0 }
+  .fs-title-input::placeholder { color: var(--muted) }
+  .fs-body { flex: 1; display: flex; flex-direction: column; padding: 0; min-height: 0; overflow: hidden }
+  .fs-textarea { flex: 1; resize: none; font-size: 15px; line-height: 1.9; border: none; border-radius: 0; padding: 16px 20px; min-height: 0; background: var(--surface) }
+  .fs-textarea:focus { outline: none; box-shadow: none }
+  .fs-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border); flex-shrink: 0 }
+  .fs-footer-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0 }
+  .fs-footer-right { display: flex; gap: 8px; flex-shrink: 0 }
+  .pb-tl-label { font-size: 13px; color: var(--muted); flex-shrink: 0 }
+  .pb-select-sm { font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; max-width: 200px; cursor: pointer }
+  .pb-select-sm:focus { outline: none; border-color: var(--accent) }
 
   .iBtn { background: none; border: none; cursor: pointer; padding: 6px; font-size: 16px; border-radius: 6px; color: var(--muted); line-height: 1 }
   .iBtn:hover { color: var(--text); background: var(--surface2) }

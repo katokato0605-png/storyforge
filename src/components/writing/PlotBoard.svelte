@@ -243,41 +243,35 @@
     <div class="fs-panel" role="dialog" aria-modal="true">
       <div class="fs-header">
         <input
-          class="fs-title-input"
+          class="fi fs-title-input"
           value={overlayBeat.title}
           oninput={(e) => updateBeat(overlayId!, { title: (e.target as HTMLInputElement).value }, true)}
           placeholder="ビートのタイトル"
         />
-        <button class="iBtn del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteBeat(id) }} aria-label="削除">🗑</button>
-        <button class="iBtn" onclick={cancelEdit} aria-label="閉じる">✕</button>
+        <button class="iBtn fs-del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteBeat(id) }} aria-label="削除">🗑</button>
+        <button class="iBtn fs-close" onclick={cancelEdit} aria-label="閉じる">✕</button>
       </div>
       <div class="fs-body">
         <textarea
           class="fta fs-textarea"
           value={overlayBeat.description}
           oninput={(e) => updateBeat(overlayId!, { description: (e.target as HTMLTextAreaElement).value }, true)}
-          placeholder="あらすじ・詳細を書く…"
+          placeholder="あらすじ・詳細（Ctrl+Enter で保存）"
         ></textarea>
       </div>
       <div class="fs-footer">
-        <div class="fs-footer-left">
-          <label class="pb-tl-label" for="tl-select-{overlayBeat.id}">🕐</label>
-          <select
-            id="tl-select-{overlayBeat.id}"
-            class="pb-select-sm"
-            value={overlayBeat.timelineEventId ?? ''}
-            onchange={(e) => updateBeat(overlayId!, { timelineEventId: (e.target as HTMLSelectElement).value || null })}
-          >
-            <option value="">タイムライン連携なし</option>
-            {#each timelineEvents as ev}
-              <option value={ev.id}>{ev.label ? `${ev.label} — ` : ''}{ev.title || '（タイトル未設定）'}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="fs-footer-right">
-          <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
-          <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
-        </div>
+        <select
+          class="fi fs-tl-select"
+          value={overlayBeat.timelineEventId ?? ''}
+          onchange={(e) => updateBeat(overlayId!, { timelineEventId: (e.target as HTMLSelectElement).value || null })}
+        >
+          <option value="">🕐 タイムライン連携なし</option>
+          {#each timelineEvents as ev}
+            <option value={ev.id}>{ev.label ? `${ev.label} — ` : ''}{ev.title || '（タイトル未設定）'}</option>
+          {/each}
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
       </div>
     </div>
   </div>
@@ -311,23 +305,18 @@
   .pb-move-btn:hover { color: var(--text); background: var(--surface2) }
   .pb-move-btn:disabled { opacity: .3; cursor: default }
 
-  /* Overlay */
-  .fs-overlay { position: fixed; inset: 0; z-index: 200; background: var(--surface); display: flex; align-items: stretch; justify-content: stretch }
-  .fs-panel { background: var(--surface); border-radius: 0; width: 100%; height: 100%; display: flex; flex-direction: column }
-  .fs-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
-  .fs-title-input { flex: 1; background: none; border: none; outline: none; font-size: 16px; font-weight: 700; color: var(--text); font-family: inherit; min-width: 0 }
-  .fs-title-input::placeholder { color: var(--muted) }
-  .fs-body { flex: 1; display: flex; flex-direction: column; padding: 0; min-height: 0; overflow: hidden }
-  .fs-textarea { flex: 1; resize: none; font-size: 15px; line-height: 1.9; border: none; border-radius: 0; padding: 16px 20px; min-height: 0; background: var(--surface) }
-  .fs-textarea:focus { outline: none; box-shadow: none }
-  .fs-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border); flex-shrink: 0 }
-  .fs-footer-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0 }
-  .fs-footer-right { display: flex; gap: 8px; flex-shrink: 0 }
-  .pb-tl-label { font-size: 13px; color: var(--muted); flex-shrink: 0 }
-  .pb-select-sm { font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; max-width: 200px; cursor: pointer }
-  .pb-select-sm:focus { outline: none; border-color: var(--accent) }
+  /* Overlay — LoreTab と同じ形 */
+  .fs-overlay  { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .fs-panel    { background: var(--surface); border-radius: 14px; width: 100%; max-width: 720px; height: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.3) }
+  .fs-header   { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .fs-title-input { flex: 1; font-size: 18px; font-weight: 700; border: none; background: none; outline: none; color: var(--text); font-family: inherit }
+  .fs-del, .fs-close { color: var(--muted) }
+  .fs-body     { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 16px 20px }
+  .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; border: none; background: none; outline: none; color: var(--text); font-family: inherit; width: 100% }
+  .fs-footer   { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap }
+  .fs-tl-select { flex: 1; min-width: 120px; font-size: 13px }
 
   .iBtn { background: none; border: none; cursor: pointer; padding: 6px; font-size: 16px; border-radius: 6px; color: var(--muted); line-height: 1 }
   .iBtn:hover { color: var(--text); background: var(--surface2) }
-  .iBtn.del:hover { color: #e05555 }
+  .iBtn.del:hover, .fs-del:hover { color: #e05555 }
 </style>

@@ -10,6 +10,7 @@
     { id: 'timeline', icon: '🕐', label: 'タイム' },
     { id: 'lore',     icon: '📖', label: '設定' },
     { id: 'ideas',    icon: '💡', label: 'アイデア' },
+    { id: 'charmaker', icon: '🎲', label: 'キャラメーカー' },
   ]
 
   function selectTab(id: TabId) {

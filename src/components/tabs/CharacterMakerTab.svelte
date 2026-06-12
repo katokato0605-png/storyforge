@@ -173,11 +173,14 @@
     personality: [...categories[2].items],
   })
 
-  let result = $state<Record<string, string>>({
+  const initResult = {
     backbone: categories[0].items[Math.floor(Math.random() * categories[0].items.length)],
     looks:    categories[1].items[Math.floor(Math.random() * categories[1].items.length)],
     personality: categories[2].items[Math.floor(Math.random() * categories[2].items.length)],
-  })
+  }
+  let history = $state<Record<string, string>[]>([initResult])
+  let historyIdx = $state(0)
+  let result = $derived(history[historyIdx])
   let saveSuccess = $state(false)
   let editingCategory = $state<string | null>(null)
   let newItemText = $state('')
@@ -200,7 +203,8 @@
         next[cat.key] = pickRandom(customItems[cat.key])
       }
     }
-    result = next
+    history = [...history.slice(0, historyIdx + 1), next]
+    historyIdx = history.length - 1
     saveSuccess = false
   }
 
@@ -234,7 +238,9 @@
   }
 
   function selectCardItem(key: string, item: string) {
-    if (result) result = { ...result, [key]: item }
+    const next = { ...result, [key]: item }
+    history = [...history.slice(0, historyIdx + 1), next]
+    historyIdx = history.length - 1
     searchingCard = null
     cardSearch[key] = ''
     saveSuccess = false
@@ -338,10 +344,13 @@
           「<strong>{result.backbone}</strong>」で「<strong>{result.looks}</strong>」な見た目の「<strong>{result.personality}</strong>」な人物
         </div>
         <div class="cm-result-actions">
-          <button class="btn btn-primary btn-sm" onclick={generate}>もう一度</button>
+          <button class="cm-hist-btn" onclick={() => { historyIdx--; saveSuccess = false }} disabled={historyIdx === 0} title="前の結果">‹ 前</button>
+          <button class="cm-hist-btn" onclick={() => { historyIdx++; saveSuccess = false }} disabled={historyIdx === history.length - 1} title="次の結果">次 ›</button>
+          <span class="cm-hist-pos">{historyIdx + 1} / {history.length}</span>
+          <button class="btn btn-primary btn-sm" onclick={generate}>🎲 再生成</button>
           {#if projectStore.currentProjectId}
             <button class="btn btn-ghost btn-sm" onclick={saveToLore} disabled={saveSuccess}>
-              {saveSuccess ? '✓ 設定資料に保存済み' : '設定資料に保存'}
+              {saveSuccess ? '✓ 保存済み' : '設定資料に保存'}
             </button>
           {/if}
         </div>
@@ -492,5 +501,9 @@
   .cm-card-search-item.current { color: var(--accent); font-weight: 700 }
   .cm-result-summary { font-size: 13px; color: var(--muted); line-height: 1.7; background: var(--surface2); border-radius: 8px; padding: 10px 14px }
   .cm-result-summary strong { color: var(--text) }
-  .cm-result-actions { display: flex; gap: 8px; flex-wrap: wrap }
+  .cm-result-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+  .cm-hist-btn { background: var(--surface2); border: 1px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; color: var(--text); font-family: inherit; transition: .15s }
+  .cm-hist-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent) }
+  .cm-hist-btn:disabled { opacity: .3; cursor: default }
+  .cm-hist-pos { font-size: 11px; color: var(--muted) }
 </style>

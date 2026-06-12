@@ -4,7 +4,13 @@
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import { createHistory } from '../../lib/utils/history.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
+
+  const epDs = createDragSort()
+  const chDs = createDragSort()
+  const sceneDs = createDragSort()
+  const beatDs = createDragSort()
 
   // ---- Types ----
   type SceneRole = '起' | '承' | '転' | '結' | '自由'
@@ -236,14 +242,12 @@
     save()
   }
 
-  function moveScene(epId: string, idx: number, dir: -1 | 1) {
+  function dragScene(epId: string, toIdx: number) {
     const ep = episodes.find(e => e.id === epId)
     if (!ep) return
-    const arr = [...ep.scenes]
-    const to = idx + dir
-    if (to < 0 || to >= arr.length) return
-    ;[arr[idx], arr[to]] = [arr[to], arr[idx]]
-    episodes = episodes.map(e => e.id === epId ? { ...e, scenes: arr } : e)
+    const next = sceneDs.drop(ep.scenes, toIdx)
+    if (!next) return
+    episodes = episodes.map(e => e.id === epId ? { ...e, scenes: next } : e)
     save()
   }
 
@@ -328,15 +332,30 @@
     save()
   }
 
-  function moveBeat(chId: string, idx: number, dir: -1 | 1) {
+  function dragBeat(chId: string, toIdx: number) {
     const ch = chapters.find(c => c.id === chId)
     if (!ch) return
+    const next = beatDs.drop(ch.beats, toIdx)
+    if (!next) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    const arr = [...ch.beats]
-    const to = idx + dir
-    if (to < 0 || to >= arr.length) return
-    ;[arr[idx], arr[to]] = [arr[to], arr[idx]]
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: arr } : c)
+    chapters = chapters.map(c => c.id === chId ? { ...c, beats: next } : c)
+    save()
+  }
+
+  function dragEpisode(toIdx: number) {
+    const next = epDs.drop(episodes, toIdx)
+    if (!next) return
+    episodes = next
+    if (!next.find(e => e.id === selectedEpisodeId)) selectedEpisodeId = next[0]?.id ?? null
+    save()
+  }
+
+  function dragChapter(toIdx: number) {
+    const next = chDs.drop(chapters, toIdx)
+    if (!next) return
+    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+    chapters = next
+    if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
     save()
   }
 
@@ -409,25 +428,38 @@
             {#if episodes.length === 0}
               <div class="nt-empty-hint">話を追加してください</div>
             {:else}
-              {#each episodes as ep (ep.id)}
+              {#each episodes as ep, idx (ep.id)}
                 {@const linkedCh = ep.chapterId ? chapters.find(c => c.id === ep.chapterId) ?? null : null}
                 {@const linkedChIdx = linkedCh ? chapters.indexOf(linkedCh) : -1}
-                <button
-                  class="nt-list-item"
-                  class:active={selectedEpisodeId === ep.id}
-                  onclick={() => selectedEpisodeId = ep.id}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="nt-list-drag-row"
+                  class:drag-over={epDs.dragOverIdx === idx}
+                  class:dragging={epDs.dragIdx === idx}
+                  draggable="true"
+                  ondragstart={() => epDs.start(idx)}
+                  ondragover={(e) => epDs.over(e, idx)}
+                  ondrop={() => dragEpisode(idx)}
+                  ondragend={() => epDs.end()}
                 >
-                  {#if ep.groupColor}
-                    <span class="nt-group-dot" style="background:{ep.groupColor}"></span>
-                  {/if}
-                  <span class="nt-ep-num">{ep.number}話</span>
-                  <span class="nt-ep-title">{ep.title || '（無題）'}</span>
-                  {#if linkedCh}
-                    <span class="nt-ch-tag">{linkedChIdx + 1}章</span>
-                  {:else if ep.groupName}
-                    <span class="nt-ch-tag">{ep.groupName}</span>
-                  {/if}
-                </button>
+                  <span class="drag-handle-sm">⠿</span>
+                  <button
+                    class="nt-list-item"
+                    class:active={selectedEpisodeId === ep.id}
+                    onclick={() => selectedEpisodeId = ep.id}
+                  >
+                    {#if ep.groupColor}
+                      <span class="nt-group-dot" style="background:{ep.groupColor}"></span>
+                    {/if}
+                    <span class="nt-ep-num">{ep.number}話</span>
+                    <span class="nt-ep-title">{ep.title || '（無題）'}</span>
+                    {#if linkedCh}
+                      <span class="nt-ch-tag">{linkedChIdx + 1}章</span>
+                    {:else if ep.groupName}
+                      <span class="nt-ch-tag">{ep.groupName}</span>
+                    {/if}
+                  </button>
+                </div>
               {/each}
             {/if}
           </div>
@@ -497,9 +529,21 @@
               {:else}
                 {#each selectedEpisode.scenes as scene, idx (scene.id)}
                   <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-                  <div class="nt-scene-card" class:editing={sceneEditId === scene.id} onclick={() => sceneEditId = sceneEditId === scene.id ? null : scene.id}>
+                  <div
+                    class="nt-scene-card"
+                    class:editing={sceneEditId === scene.id}
+                    class:dragging={sceneDs.dragIdx === idx}
+                    class:drag-over={sceneDs.dragOverIdx === idx}
+                    draggable="true"
+                    ondragstart={() => sceneDs.start(idx)}
+                    ondragover={(e) => sceneDs.over(e, idx)}
+                    ondrop={() => dragScene(selectedEpisode!.id, idx)}
+                    ondragend={() => sceneDs.end()}
+                    onclick={() => sceneEditId = sceneEditId === scene.id ? null : scene.id}
+                  >
                     <!-- Scene header row -->
                     <div class="nt-scene-top">
+                      <span class="drag-handle-sm scene-drag">⠿</span>
                       <div class="nt-role-btns" onclick={(e) => e.stopPropagation()}>
                         {#each ROLES as role}
                           <button
@@ -511,8 +555,6 @@
                         {/each}
                       </div>
                       <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
-                        <button class="nt-move-btn" onclick={() => moveScene(selectedEpisode!.id, idx, -1)} disabled={idx === 0}>↑</button>
-                        <button class="nt-move-btn" onclick={() => moveScene(selectedEpisode!.id, idx, 1)} disabled={idx === selectedEpisode.scenes.length - 1}>↓</button>
                         <button class="iBtn del" onclick={() => deleteScene(selectedEpisode!.id, scene.id)}>🗑</button>
                       </div>
                     </div>
@@ -575,14 +617,27 @@
               <div class="nt-empty-hint">章を追加してください</div>
             {:else}
               {#each chapters as ch, idx (ch.id)}
-                <button
-                  class="nt-list-item"
-                  class:active={selectedChapterId === ch.id}
-                  onclick={() => selectedChapterId = ch.id}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="nt-list-drag-row"
+                  class:drag-over={chDs.dragOverIdx === idx}
+                  class:dragging={chDs.dragIdx === idx}
+                  draggable="true"
+                  ondragstart={() => chDs.start(idx)}
+                  ondragover={(e) => chDs.over(e, idx)}
+                  ondrop={() => dragChapter(idx)}
+                  ondragend={() => chDs.end()}
                 >
-                  <span class="nt-ep-num">{idx + 1}章</span>
-                  <span class="nt-ep-title">{ch.title || '（無題）'}</span>
-                </button>
+                  <span class="drag-handle-sm">⠿</span>
+                  <button
+                    class="nt-list-item"
+                    class:active={selectedChapterId === ch.id}
+                    onclick={() => selectedChapterId = ch.id}
+                  >
+                    <span class="nt-ep-num">{idx + 1}章</span>
+                    <span class="nt-ep-title">{ch.title || '（無題）'}</span>
+                  </button>
+                </div>
               {/each}
             {/if}
           </div>
@@ -648,15 +703,25 @@
               {:else}
                 {#each selectedChapter.beats as beat, idx (beat.id)}
                   <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-                  <div class="nt-scene-card" class:editing={beatEditId === beat.id} onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}>
+                  <div
+                    class="nt-scene-card"
+                    class:editing={beatEditId === beat.id}
+                    class:dragging={beatDs.dragIdx === idx}
+                    class:drag-over={beatDs.dragOverIdx === idx}
+                    draggable="true"
+                    ondragstart={() => beatDs.start(idx)}
+                    ondragover={(e) => beatDs.over(e, idx)}
+                    ondrop={() => dragBeat(selectedChapter!.id, idx)}
+                    ondragend={() => beatDs.end()}
+                    onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}
+                  >
                     <div class="nt-scene-top">
+                      <span class="drag-handle-sm scene-drag">⠿</span>
                       <div class="nt-beat-labels">
                         {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
                         <span class="nt-beat-title">{beat.title || '（タイトル未設定）'}</span>
                       </div>
                       <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
-                        <button class="nt-move-btn" onclick={() => moveBeat(selectedChapter!.id, idx, -1)} disabled={idx === 0}>↑</button>
-                        <button class="nt-move-btn" onclick={() => moveBeat(selectedChapter!.id, idx, 1)} disabled={idx === selectedChapter.beats.length - 1}>↓</button>
                         <button class="iBtn del" onclick={() => deleteBeat(selectedChapter!.id, beat.id)}>🗑</button>
                       </div>
                     </div>
@@ -839,9 +904,14 @@
   }
   .nt-left-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted) }
   .nt-list { flex: 1; overflow-y: auto; padding: 6px 0 }
+  .nt-list-drag-row { display: flex; align-items: center; cursor: grab; transition: opacity .12s }
+  .nt-list-drag-row.dragging { opacity: 0.35; cursor: grabbing }
+  .nt-list-drag-row.drag-over { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 6px }
+  .drag-handle-sm { color: var(--muted); font-size: 12px; padding: 0 4px 0 8px; flex-shrink: 0; cursor: grab; user-select: none }
+  .scene-drag { padding: 0 6px }
   .nt-list-item {
-    width: 100%; display: flex; align-items: center; gap: 6px;
-    padding: 8px 12px; background: none; border: none; cursor: pointer;
+    flex: 1; display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px 8px 4px; background: none; border: none; cursor: pointer;
     font-family: inherit; font-size: 13px; color: var(--text);
     text-align: left; transition: .1s;
   }
@@ -888,11 +958,12 @@
   .nt-scene-card {
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); margin-bottom: 8px;
-    overflow: hidden; transition: border-color .15s; cursor: pointer;
+    overflow: hidden; transition: border-color .15s, opacity .12s; cursor: grab;
   }
   .nt-scene-card:hover { border-color: var(--accent) }
-  .nt-scene-card.editing { cursor: default }
-  .nt-scene-card.editing { border-color: var(--accent) }
+  .nt-scene-card.editing { cursor: default; border-color: var(--accent) }
+  .nt-scene-card.dragging { opacity: 0.35; cursor: grabbing }
+  .nt-scene-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) }
   .nt-scene-top {
     display: flex; align-items: center; gap: 8px;
     padding: 8px 10px; border-bottom: 1px solid var(--border);

@@ -3,6 +3,25 @@
   import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
+
+  const ideaDs = createDragSort()
+  let ideaOrder = $state<string[]>([])
+
+  $effect(() => {
+    if (ideaStore.status !== 'ready') return
+    try {
+      const raw = localStorage.getItem('sf_idea_order')
+      ideaOrder = raw ? JSON.parse(raw) : []
+    } catch { ideaOrder = [] }
+  })
+
+  function saveIdeaOrder(ordered: { id: string }[]) {
+    const newIds = ordered.map(i => i.id)
+    const others = ideaOrder.filter(id => !newIds.includes(id))
+    ideaOrder = [...newIds, ...others]
+    localStorage.setItem('sf_idea_order', JSON.stringify(ideaOrder))
+  }
 
   const TEMPLATES_LIST = [
     {
@@ -140,11 +159,22 @@
 
   onMount(() => ideaStore.load())
 
-  const filtered = $derived(ideaStore.ideas.filter(i => {
-    if (filterLinked && i.linkedProjectId !== projectStore.currentProjectId) return false
-    if (filterTag && !i.tags.includes(filterTag)) return false
-    return true
-  }))
+  const filtered = $derived.by(() => {
+    const base = ideaStore.ideas.filter(i => {
+      if (filterLinked && i.linkedProjectId !== projectStore.currentProjectId) return false
+      if (filterTag && !i.tags.includes(filterTag)) return false
+      return true
+    })
+    if (ideaOrder.length === 0) return base
+    return [...base].sort((a, b) => {
+      const ai = ideaOrder.indexOf(a.id)
+      const bi = ideaOrder.indexOf(b.id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+  })
 
   const allTags = $derived([...new Set(ideaStore.ideas.flatMap(i => i.tags))].sort())
 
@@ -264,9 +294,19 @@
         <div class="empty-sub">「＋ 追加」ボタンでアイデアを記録しましょう</div>
       </div>
     {:else}
-      {#each filtered as idea (idea.id)}
+      {#each filtered as idea, idx (idea.id)}
         <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-        <div class="idea-card" onclick={() => startEdit(idea)}>
+        <div
+          class="idea-card"
+          class:dragging={ideaDs.dragIdx === idx}
+          class:drag-over={ideaDs.dragOverIdx === idx}
+          draggable="true"
+          ondragstart={() => ideaDs.start(idx)}
+          ondragover={(e) => ideaDs.over(e, idx)}
+          ondrop={() => { const next = ideaDs.drop([...filtered], idx); if (next) saveIdeaOrder(next) }}
+          ondragend={() => ideaDs.end()}
+          onclick={() => startEdit(idea)}
+        >
           {#if idea.title}
             <div class="idea-title">{idea.title}</div>
           {/if}
@@ -346,8 +386,10 @@
   .add-row     { display: flex; gap: 8px; align-items: center }
   .add-row .fi { flex: 1 }
   .idea-list   { flex: 1; overflow-y: auto; padding: 12px 20px }
-  .idea-card   { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s }
+  .idea-card   { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: grab; transition: border-color .15s, opacity .12s }
   .idea-card:hover { border-color: var(--accent) }
+  .idea-card.dragging { opacity: 0.35; cursor: grabbing }
+  .idea-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) }
   .idea-title  { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text) }
   .idea-card:hover .idea-title { color: var(--accent) }
   .idea-text   { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }

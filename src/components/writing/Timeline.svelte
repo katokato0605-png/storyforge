@@ -1,8 +1,11 @@
 <script lang="ts">
   import { noteStore } from '../../lib/stores/noteStore.svelte'
   import { createHistory } from '../../lib/utils/history.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import { nanoid } from 'nanoid'
+
+  const ds = createDragSort()
 
   let { projectId }: { projectId: string } = $props()
 
@@ -178,22 +181,12 @@
     save(next)
   }
 
-  function moveUp(idx: number) {
-    if (idx === 0) return
+  function dragReorder(toIdx: number) {
+    const next = ds.drop(events, toIdx)
+    if (!next) return
     hist.push(events.map(e => ({ ...e })))
-    const arr = [...events]
-    ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
-    events = arr
-    save(arr)
-  }
-
-  function moveDown(idx: number) {
-    if (idx === events.length - 1) return
-    hist.push(events.map(e => ({ ...e })))
-    const arr = [...events]
-    ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
-    events = arr
-    save(arr)
+    events = next
+    save(next)
   }
 
   let plotBeats = $derived.by((): PlotBeat[] => {
@@ -239,7 +232,18 @@
       <!-- 世界史モード：縦型年代リスト -->
       <div class="tl-history">
         {#each events as ev, idx (ev.id)}
-          <div class="tl-h-row">
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="tl-h-row"
+            class:dragging={ds.dragIdx === idx}
+            class:drag-over={ds.dragOverIdx === idx}
+            draggable="true"
+            ondragstart={() => ds.start(idx)}
+            ondragover={(e) => ds.over(e, idx)}
+            ondrop={() => dragReorder(idx)}
+            ondragend={() => ds.end()}
+          >
+            <span class="drag-handle">⠿</span>
             <div class="tl-h-era-col">
               <span class="tl-h-era" style="color:{ev.color}">{ev.label || '─'}</span>
               {#if idx < events.length - 1}<div class="tl-h-line"></div>{/if}
@@ -255,10 +259,6 @@
                 </div>
               {/if}
             </button>
-            <div class="tl-view-acts">
-              <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
-              <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
-            </div>
           </div>
         {/each}
       </div>
@@ -266,7 +266,18 @@
       <!-- 通常モード -->
       <div class="tl-list">
         {#each events as ev, idx (ev.id)}
-          <div class="tl-row">
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="tl-row"
+            class:dragging={ds.dragIdx === idx}
+            class:drag-over={ds.dragOverIdx === idx}
+            draggable="true"
+            ondragstart={() => ds.start(idx)}
+            ondragover={(e) => ds.over(e, idx)}
+            ondrop={() => dragReorder(idx)}
+            ondragend={() => ds.end()}
+          >
+            <span class="drag-handle tl-drag-handle">⠿</span>
             <div class="tl-spine">
               <div class="tl-dot" style="background:{ev.color}"></div>
               {#if idx < events.length - 1}<div class="tl-line"></div>{/if}
@@ -285,10 +296,6 @@
                   </div>
                 {/if}
               </button>
-              <div class="tl-view-acts">
-                <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
-                <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
-              </div>
             </div>
           </div>
         {/each}
@@ -368,7 +375,9 @@
 
   /* 世界史モード */
   .tl-history { display: flex; flex-direction: column }
-  .tl-h-row { display: flex; gap: 0; align-items: flex-start }
+  .tl-h-row { display: flex; gap: 0; align-items: flex-start; cursor: grab; transition: opacity .15s }
+  .tl-h-row.dragging { opacity: 0.35; cursor: grabbing }
+  .tl-h-row.drag-over { outline: 2px solid var(--accent); border-radius: 8px }
   .tl-h-era-col {
     width: 130px; min-width: 130px; flex-shrink: 0;
     display: flex; flex-direction: column; align-items: flex-end;
@@ -395,7 +404,12 @@
   .tl-add-btn-history { margin-left: 146px; width: calc(100% - 146px) }
   .tl-list { display: flex; flex-direction: column }
 
-  .tl-row { display: flex; gap: 12px; align-items: flex-start }
+  .tl-row { display: flex; gap: 12px; align-items: flex-start; cursor: grab; transition: opacity .15s }
+  .tl-row.dragging { opacity: 0.35; cursor: grabbing }
+  .tl-row.drag-over .tl-card { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) }
+  .drag-handle { display: flex; align-items: center; padding: 12px 4px; color: var(--muted); font-size: 14px; flex-shrink: 0; cursor: grab; user-select: none }
+  .tl-drag-handle { padding-top: 14px }
+  .tl-view-acts { display: none }
   .tl-spine { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 20px; padding-top: 14px }
   .tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0 }
   .tl-line { width: 2px; flex: 1; min-height: 20px; background: var(--border); margin-top: 4px }

@@ -3,8 +3,30 @@
   import { loreStore } from '../../lib/stores/loreStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import type { LoreType } from '../../lib/db/schema'
   import { characterCategories } from '../../lib/characterTemplates'
+
+  const loreDs = createDragSort()
+  let loreOrder = $state<string[]>([])
+
+  $effect(() => {
+    const pid = projectStore.currentProjectId
+    if (!pid) { loreOrder = []; return }
+    try {
+      const raw = localStorage.getItem(`sf_lore_order_${pid}`)
+      loreOrder = raw ? JSON.parse(raw) : []
+    } catch { loreOrder = [] }
+  })
+
+  function saveLoreOrder(ordered: { id: string }[]) {
+    const pid = projectStore.currentProjectId
+    if (!pid) return
+    const newIds = ordered.map(e => e.id)
+    const others = loreOrder.filter(id => !newIds.includes(id))
+    loreOrder = [...newIds, ...others]
+    localStorage.setItem(`sf_lore_order_${pid}`, JSON.stringify(loreOrder))
+  }
 
   type Tab = LoreType | 'world_lore'
   let activeTab = $state<Tab>('character')
@@ -77,14 +99,23 @@
     activeTab === 'world_lore' ? ['world', 'lore'] : [activeTab as LoreType]
   )
 
-  const currentEntries = $derived(
-    loreStore.entries.filter(e => {
+  const currentEntries = $derived.by(() => {
+    const base = loreStore.entries.filter(e => {
       if (e.projectId !== projectStore.currentProjectId) return false
       if (!activeTypes.includes(e.type)) return false
       if (filterTag && !e.tags.includes(filterTag)) return false
       return true
     })
-  )
+    if (loreOrder.length === 0) return base
+    return [...base].sort((a, b) => {
+      const ai = loreOrder.indexOf(a.id)
+      const bi = loreOrder.indexOf(b.id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+  })
 
   const allTags = $derived(
     [...new Set(
@@ -264,9 +295,19 @@
           <div class="empty-sub">「＋ 追加」ボタンで記録しましょう</div>
         </div>
       {:else}
-        {#each currentEntries as entry (entry.id)}
+        {#each currentEntries as entry, idx (entry.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-          <div class="entry-card" onclick={() => startEdit(entry)}>
+          <div
+            class="entry-card"
+            class:dragging={loreDs.dragIdx === idx}
+            class:drag-over={loreDs.dragOverIdx === idx}
+            draggable="true"
+            ondragstart={() => loreDs.start(idx)}
+            ondragover={(e) => loreDs.over(e, idx)}
+            ondrop={() => { const next = loreDs.drop([...currentEntries], idx); if (next) saveLoreOrder(next) }}
+            ondragend={() => loreDs.end()}
+            onclick={() => startEdit(entry)}
+          >
             <div class="entry-title">{entry.title}</div>
             {#if entry.content}
               <p class="entry-text">{entry.content}</p>
@@ -402,8 +443,10 @@
   .add-row .fi { flex: 1 }
 
   .entry-list  { flex: 1; overflow-y: auto; padding: 12px 20px }
-  .entry-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s }
+  .entry-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: grab; transition: border-color .15s, opacity .12s }
   .entry-card:hover { border-color: var(--accent) }
+  .entry-card.dragging { opacity: 0.35; cursor: grabbing }
+  .entry-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) }
   .entry-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; transition: color .15s }
   .entry-card:hover .entry-title { color: var(--accent) }
   .entry-text  { font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; color: var(--muted); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden }

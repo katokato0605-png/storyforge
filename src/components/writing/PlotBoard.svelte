@@ -1,8 +1,11 @@
 <script lang="ts">
   import { noteStore } from '../../lib/stores/noteStore.svelte'
   import { createHistory } from '../../lib/utils/history.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import { nanoid } from 'nanoid'
+
+  const ds = createDragSort()
 
   let { projectId }: { projectId: string } = $props()
 
@@ -172,22 +175,12 @@
     save(next)
   }
 
-  function moveUp(idx: number) {
-    if (idx === 0) return
+  function dragReorder(toIdx: number) {
+    const next = ds.drop(beats, toIdx)
+    if (!next) return
     hist.push(beats.map(b => ({ ...b })))
-    const arr = [...beats]
-    ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
-    beats = arr
-    save(arr)
-  }
-
-  function moveDown(idx: number) {
-    if (idx === beats.length - 1) return
-    hist.push(beats.map(b => ({ ...b })))
-    const arr = [...beats]
-    ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
-    beats = arr
-    save(arr)
+    beats = next
+    save(next)
   }
 
   function linkedEventLabel(eventId: string | null): string {
@@ -217,7 +210,18 @@
     {:else}
       <div class="pb-list">
         {#each beats as beat, idx (beat.id)}
-          <div class="pb-card">
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="pb-card"
+            class:dragging={ds.dragIdx === idx}
+            class:drag-over={ds.dragOverIdx === idx}
+            draggable="true"
+            ondragstart={() => ds.start(idx)}
+            ondragover={(e) => ds.over(e, idx)}
+            ondrop={() => dragReorder(idx)}
+            ondragend={() => ds.end()}
+          >
+            <span class="drag-handle">⠿</span>
             <button class="pb-view" onclick={() => openOverlay(beat)}>
               {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
               <div class="pb-title">{beat.title || '（タイトル未設定）'}</div>
@@ -226,10 +230,6 @@
                 <div class="pb-linked-badge">🕐 {linkedEventLabel(beat.timelineEventId)}</div>
               {/if}
             </button>
-            <div class="pb-move-acts">
-              <button class="pb-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
-              <button class="pb-move-btn" onclick={() => moveDown(idx)} disabled={idx === beats.length - 1} aria-label="下へ">↓</button>
-            </div>
           </div>
         {/each}
       </div>
@@ -291,19 +291,18 @@
 
   .pb-list { display: flex; flex-direction: column; gap: 8px }
 
-  .pb-card { border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s; display: flex; align-items: flex-start }
+  .pb-card { border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s, opacity .15s; display: flex; align-items: flex-start; cursor: grab }
   .pb-card:hover { border-color: var(--accent) }
+  .pb-card.dragging { opacity: 0.35; cursor: grabbing }
+  .pb-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent) }
 
-  .pb-view { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit }
+  .drag-handle { display: flex; align-items: center; padding: 12px 6px 12px 10px; color: var(--muted); font-size: 14px; flex-shrink: 0; cursor: grab; user-select: none }
+
+  .pb-view { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px 12px 0; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit }
   .pb-stage-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--accent); color: #fff; letter-spacing: .3px }
   .pb-title { font-size: 14px; font-weight: 600; color: var(--text) }
   .pb-desc { font-size: 12px; color: var(--muted); white-space: pre-wrap; line-height: 1.6 }
   .pb-linked-badge { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 2px 8px; border-radius: 20px; margin-top: 2px }
-
-  .pb-move-acts { display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; flex-shrink: 0 }
-  .pb-move-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px 6px; font-size: 12px; border-radius: 4px; min-width: 28px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center }
-  .pb-move-btn:hover { color: var(--text); background: var(--surface2) }
-  .pb-move-btn:disabled { opacity: .3; cursor: default }
 
   /* Overlay — LoreTab と同じ形 */
   .fs-overlay  { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }

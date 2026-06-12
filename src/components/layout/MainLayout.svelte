@@ -20,7 +20,6 @@
 <div id="main">
   {#if projectStore.currentProject}
     <div class="work-layout">
-      <Sidebar />
       <main class="work-main">
         {#if children}
           {@render children()}

@@ -311,8 +311,8 @@
   .pb-move-btn:disabled { opacity: .3; cursor: default }
 
   /* Overlay */
-  .fs-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }
-  .fs-panel { background: var(--surface); border-radius: 14px; width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.3) }
+  .fs-overlay { position: fixed; inset: 0; z-index: 200; background: var(--surface); display: flex; align-items: stretch; justify-content: stretch }
+  .fs-panel { background: var(--surface); border-radius: 0; width: 100%; height: 100%; display: flex; flex-direction: column }
   .fs-header { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
   .fs-header-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
   .fs-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; overflow-y: auto }

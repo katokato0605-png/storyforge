@@ -300,10 +300,7 @@
               {#if idea.tags.length > 0}
                 <div class="tags">
                   {#each idea.tags as tag}
-                    <button
-                      class="tag tag-btn"
-                      onclick={(e) => { e.stopPropagation(); filterTag = filterTag === tag ? '' : tag }}
-                    >{tag}</button>
+                    <span class="tag">{tag}</span>
                   {/each}
                 </div>
               {/if}

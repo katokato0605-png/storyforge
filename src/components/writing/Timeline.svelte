@@ -30,8 +30,8 @@
   const COLORS = ['#7c6af7', '#e09020', '#4caf50', '#e05555', '#2196f3', '#e91e8c']
 
   let events = $state<TimelineEvent[]>([])
-  let editingId = $state<string | null>(null)
-  let editSnapshot = $state<TimelineEvent | null>(null)
+  let overlayId = $state<string | null>(null)
+  let overlaySnapshot = $state<TimelineEvent | null>(null)
   let loaded = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
 
@@ -41,8 +41,8 @@
     const prev = hist.undo(events.map(e => ({ ...e })))
     if (!prev) return
     events = prev
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(prev)
   }
 
@@ -50,8 +50,8 @@
     const next = hist.redo(events.map(e => ({ ...e })))
     if (!next) return
     events = next
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(next)
   }
 
@@ -61,6 +61,7 @@
       if (!ctrl) return
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo() }
+      if (overlayId && e.key === 'Enter') { e.preventDefault(); confirmEdit() }
     }
     document.addEventListener('keydown', handleKeydown)
     return () => document.removeEventListener('keydown', handleKeydown)
@@ -78,7 +79,6 @@
         if (raw) {
           const parsed = JSON.parse(raw)
           if (Array.isArray(parsed)) {
-            // legacy: migrate from bare array (version < 1) → save v1 format immediately
             events = parsed
             save(parsed)
           } else if (parsed?.version === 1 && Array.isArray(parsed.events)) {
@@ -118,14 +118,14 @@
     }
     const next = [...events, e]
     events = next
-    editSnapshot = { ...e }
-    editingId = e.id
+    overlaySnapshot = { ...e }
+    overlayId = e.id
     save(next)
   }
 
-  function startEdit(ev: TimelineEvent) {
-    editSnapshot = { ...ev }
-    editingId = ev.id
+  function openOverlay(ev: TimelineEvent) {
+    overlaySnapshot = { ...ev }
+    overlayId = ev.id
   }
 
   function updateEvent(id: string, patch: Partial<TimelineEvent>, debounce = false) {
@@ -137,32 +137,32 @@
 
   function cancelEdit() {
     clearTimeout(saveTimer)
-    if (editSnapshot && editingId) {
-      const restored = events.map(e => e.id === editingId ? editSnapshot! : e)
+    if (overlaySnapshot && overlayId) {
+      const restored = events.map(e => e.id === overlayId ? overlaySnapshot! : e)
       events = restored
       save(restored)
     }
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
   }
 
   function confirmEdit() {
     clearTimeout(saveTimer)
-    if (editSnapshot && editingId) {
-      const pre = events.map(e => e.id === editingId ? editSnapshot! : e)
+    if (overlaySnapshot && overlayId) {
+      const pre = events.map(e => e.id === overlayId ? overlaySnapshot! : e)
       hist.push(pre)
     }
     save(events)
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
   }
 
   function deleteEvent(id: string) {
     hist.push(events.map(e => ({ ...e })))
     const next = events.filter(e => e.id !== id)
     events = next
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(next)
   }
 
@@ -199,6 +199,8 @@
   function linkedBeats(eventId: string): PlotBeat[] {
     return plotBeats.filter(b => b.timelineEventId === eventId)
   }
+
+  const overlayEvent = $derived(overlayId ? events.find(e => e.id === overlayId) ?? null : null)
 </script>
 
 {#if !loaded}
@@ -222,74 +224,78 @@
             {#if idx < events.length - 1}<div class="tl-line"></div>{/if}
           </div>
 
-          <div class="tl-card" class:editing={editingId === ev.id}>
-            {#if editingId === ev.id}
-              <div class="tl-edit">
-                <div class="tl-edit-row">
-                  <input
-                    class="fi tl-input-label"
-                    value={ev.label}
-                    oninput={(e) => updateEvent(ev.id, { label: (e.target as HTMLInputElement).value }, true)}
-                    placeholder="時期・日付（例：第1章・1日目）"
-                  />
-                  <div class="tl-colors">
-                    {#each COLORS as c}
-                      <button
-                        class="tl-color-dot"
-                        class:selected={ev.color === c}
-                        style="background:{c}"
-                        onclick={() => updateEvent(ev.id, { color: c })}
-                        aria-label="色を選択"
-                      ></button>
-                    {/each}
-                  </div>
+          <div class="tl-card">
+            <button class="tl-view-body" onclick={() => openOverlay(ev)}>
+              <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
+              <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
+              {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
+              {#if linkedBeats(ev.id).length > 0}
+                <div class="tl-plot-badges">
+                  {#each linkedBeats(ev.id) as beat}
+                    <span class="tl-plot-badge">📋 {beat.title || '（タイトル未設定）'}</span>
+                  {/each}
                 </div>
-                <input
-                  class="fi tl-input-title"
-                  value={ev.title}
-                  oninput={(e) => updateEvent(ev.id, { title: (e.target as HTMLInputElement).value }, true)}
-                  placeholder="イベントのタイトル"
-                />
-                <textarea
-                  class="fi tl-textarea"
-                  value={ev.note}
-                  oninput={(e) => updateEvent(ev.id, { note: (e.target as HTMLTextAreaElement).value }, true)}
-                  placeholder="詳細・メモ（任意）"
-                  rows="3"
-                ></textarea>
-                <div class="tl-edit-acts">
-                  <button class="btn btn-ghost btn-sm" onclick={() => deleteEvent(ev.id)}>🗑 削除</button>
-                  <div class="tl-edit-right">
-                    <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
-                    <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
-                  </div>
-                </div>
-              </div>
-            {:else}
-              <div class="tl-view">
-                <button class="tl-view-body" onclick={() => startEdit(ev)}>
-                  <span class="tl-label" style="color:{ev.color}">{ev.label || '（時期未設定）'}</span>
-                  <div class="tl-title">{ev.title || '（タイトル未設定）'}</div>
-                  {#if ev.note}<div class="tl-note">{ev.note}</div>{/if}
-                  {#if linkedBeats(ev.id).length > 0}
-                    <div class="tl-plot-badges">
-                      {#each linkedBeats(ev.id) as beat}
-                        <span class="tl-plot-badge">📋 {beat.title || '（タイトル未設定）'}</span>
-                      {/each}
-                    </div>
-                  {/if}
-                </button>
-                <div class="tl-view-acts">
-                  <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
-                  <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
-                </div>
-              </div>
-            {/if}
+              {/if}
+            </button>
+            <div class="tl-view-acts">
+              <button class="tl-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
+              <button class="tl-move-btn" onclick={() => moveDown(idx)} disabled={idx === events.length - 1} aria-label="下へ">↓</button>
+            </div>
           </div>
         </div>
       {/each}
     </div>
     <button class="tl-add-btn" onclick={addEvent}>＋ イベントを追加</button>
+  </div>
+{/if}
+
+{#if overlayId && overlayEvent}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="fs-overlay" onclick={(e) => { if (e.target === e.currentTarget) cancelEdit() }}>
+    <div class="fs-panel" role="dialog" aria-modal="true">
+      <div class="fs-header">
+        <span class="fs-label-badge" style="color:{overlayEvent.color}">{overlayEvent.label || '（時期未設定）'}</span>
+        <button class="iBtn del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteEvent(id) }} aria-label="削除">🗑</button>
+        <button class="iBtn" onclick={cancelEdit} aria-label="閉じる">✕</button>
+      </div>
+      <div class="fs-body">
+        <div class="fs-field-row">
+          <input
+            class="fi fs-input-label"
+            value={overlayEvent.label}
+            oninput={(e) => updateEvent(overlayId!, { label: (e.target as HTMLInputElement).value }, true)}
+            placeholder="時期・日付（例：第1章・1日目）"
+          />
+          <div class="tl-colors">
+            {#each COLORS as c}
+              <button
+                class="tl-color-dot"
+                class:selected={overlayEvent.color === c}
+                style="background:{c}"
+                onclick={() => updateEvent(overlayId!, { color: c })}
+                aria-label="色を選択"
+              ></button>
+            {/each}
+          </div>
+        </div>
+        <input
+          class="fi fs-input-title"
+          value={overlayEvent.title}
+          oninput={(e) => updateEvent(overlayId!, { title: (e.target as HTMLInputElement).value }, true)}
+          placeholder="イベントのタイトル"
+        />
+        <textarea
+          class="fta fs-textarea"
+          value={overlayEvent.note}
+          oninput={(e) => updateEvent(overlayId!, { note: (e.target as HTMLTextAreaElement).value }, true)}
+          placeholder="詳細・メモ（任意）"
+        ></textarea>
+      </div>
+      <div class="fs-footer">
+        <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
+      </div>
+    </div>
   </div>
 {/if}
 
@@ -309,11 +315,9 @@
   .tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0 }
   .tl-line { width: 2px; flex: 1; min-height: 20px; background: var(--border); margin-top: 4px }
 
-  .tl-card { flex: 1; margin-bottom: 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s }
+  .tl-card { flex: 1; margin-bottom: 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s; display: flex; align-items: flex-start }
   .tl-card:hover { border-color: var(--accent) }
-  .tl-card.editing { border-color: var(--accent) }
 
-  .tl-view { display: flex; align-items: flex-start }
   .tl-view-body { flex: 1; padding: 10px 8px 10px 14px; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit }
   .tl-label { font-size: 11px; font-weight: 600; display: block; margin-bottom: 4px }
   .tl-view-acts { display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; flex-shrink: 0 }
@@ -323,20 +327,29 @@
   .tl-title { font-size: 14px; font-weight: 600; color: var(--text) }
   .tl-note { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; line-height: 1.6 }
 
-  .tl-edit { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px }
-  .tl-edit-row { display: flex; gap: 8px; align-items: center }
-  .tl-input-label { font-size: 12px; flex: 1 }
-  .tl-input-title { font-size: 14px; font-weight: 600 }
-  .tl-textarea { font-size: 13px; resize: vertical; min-height: 60px; line-height: 1.6 }
-  .tl-colors { display: flex; gap: 6px; flex-shrink: 0 }
-  .tl-color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: .1s }
-  .tl-color-dot.selected { border-color: var(--text); transform: scale(1.15) }
-  .tl-edit-acts { display: flex; justify-content: space-between; align-items: center }
-  .tl-edit-right { display: flex; gap: 6px }
-
   .tl-add-btn { margin-top: 8px; margin-left: 32px; background: none; border: 1px dashed var(--border); color: var(--muted); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: .15s; width: calc(100% - 32px) }
   .tl-add-btn:hover { border-color: var(--accent); color: var(--accent) }
 
   .tl-plot-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px }
   .tl-plot-badge { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 2px 8px; border-radius: 20px }
+
+  /* Overlay */
+  .fs-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .fs-panel { background: var(--surface); border-radius: 14px; width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.3) }
+  .fs-header { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .fs-label-badge { flex: 1; font-size: 13px; font-weight: 700 }
+  .fs-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; overflow-y: auto }
+  .fs-field-row { display: flex; gap: 8px; align-items: center }
+  .fs-input-label { flex: 1; font-size: 13px }
+  .fs-input-title { font-size: 16px; font-weight: 700 }
+  .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; min-height: 120px }
+  .fs-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0 }
+
+  .tl-colors { display: flex; gap: 6px; flex-shrink: 0 }
+  .tl-color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: .1s }
+  .tl-color-dot.selected { border-color: var(--text); transform: scale(1.15) }
+
+  .iBtn { background: none; border: none; cursor: pointer; padding: 6px; font-size: 16px; border-radius: 6px; color: var(--muted); line-height: 1 }
+  .iBtn:hover { color: var(--text); background: var(--surface2) }
+  .iBtn.del:hover { color: #e05555 }
 </style>

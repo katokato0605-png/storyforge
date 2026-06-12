@@ -62,8 +62,8 @@
 
   let beats = $state<PlotBeat[]>([])
   let timelineEvents = $state<TimelineEvent[]>([])
-  let editingId = $state<string | null>(null)
-  let editSnapshot = $state<PlotBeat | null>(null)
+  let overlayId = $state<string | null>(null)
+  let overlaySnapshot = $state<PlotBeat | null>(null)
   let loaded = $state(false)
   let showTemplateMenu = $state(false)
   let saveTimer: ReturnType<typeof setTimeout>
@@ -74,8 +74,8 @@
     const prev = hist.undo(beats.map(b => ({ ...b })))
     if (!prev) return
     beats = prev
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(prev)
   }
 
@@ -83,8 +83,8 @@
     const next = hist.redo(beats.map(b => ({ ...b })))
     if (!next) return
     beats = next
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(next)
   }
 
@@ -158,14 +158,14 @@
     const beat: PlotBeat = { id: nanoid(), stage: '', title: '', description: '', timelineEventId: null }
     const next = [...beats, beat]
     beats = next
-    editSnapshot = { ...beat }
-    editingId = beat.id
+    overlaySnapshot = { ...beat }
+    overlayId = beat.id
     save(next)
   }
 
-  function startEdit(beat: PlotBeat) {
-    editSnapshot = { ...beat }
-    editingId = beat.id
+  function openOverlay(beat: PlotBeat) {
+    overlaySnapshot = { ...beat }
+    overlayId = beat.id
   }
 
   function updateBeat(id: string, patch: Partial<PlotBeat>, debounce = false) {
@@ -177,32 +177,32 @@
 
   function cancelEdit() {
     clearTimeout(saveTimer)
-    if (editSnapshot && editingId) {
-      const restored = beats.map(b => b.id === editingId ? editSnapshot! : b)
+    if (overlaySnapshot && overlayId) {
+      const restored = beats.map(b => b.id === overlayId ? overlaySnapshot! : b)
       beats = restored
       save(restored)
     }
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
   }
 
   function confirmEdit() {
     clearTimeout(saveTimer)
-    if (editSnapshot && editingId) {
-      const pre = beats.map(b => b.id === editingId ? editSnapshot! : b)
+    if (overlaySnapshot && overlayId) {
+      const pre = beats.map(b => b.id === overlayId ? overlaySnapshot! : b)
       hist.push(pre)
     }
     save(beats)
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
   }
 
   function deleteBeat(id: string) {
     hist.push(beats.map(b => ({ ...b })))
     const next = beats.filter(b => b.id !== id)
     beats = next
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(next)
   }
 
@@ -236,8 +236,8 @@
       timelineEventId: null,
     }))
     beats = newBeats
-    editingId = null
-    editSnapshot = null
+    overlayId = null
+    overlaySnapshot = null
     save(newBeats)
   }
 
@@ -246,6 +246,8 @@
     const ev = timelineEvents.find(e => e.id === eventId)
     return ev ? (ev.title || ev.label || '（タイトル未設定）') : '（削除済み）'
   }
+
+  const overlayBeat = $derived(overlayId ? beats.find(b => b.id === overlayId) ?? null : null)
 </script>
 
 {#if !loaded}
@@ -284,70 +286,74 @@
     {:else}
       <div class="pb-list">
         {#each beats as beat, idx (beat.id)}
-          <div class="pb-card" class:editing={editingId === beat.id}>
-            {#if editingId === beat.id}
-              <div class="pb-edit">
-                <div class="pb-edit-row">
-                  <input
-                    class="fi pb-input-stage"
-                    value={beat.stage}
-                    oninput={(e) => updateBeat(beat.id, { stage: (e.target as HTMLInputElement).value }, true)}
-                    placeholder="幕・段階（例：第一幕）"
-                  />
-                  <div class="pb-move-acts">
-                    <button class="pb-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
-                    <button class="pb-move-btn" onclick={() => moveDown(idx)} disabled={idx === beats.length - 1} aria-label="下へ">↓</button>
-                  </div>
-                </div>
-                <input
-                  class="fi pb-input-title"
-                  value={beat.title}
-                  oninput={(e) => updateBeat(beat.id, { title: (e.target as HTMLInputElement).value }, true)}
-                  placeholder="ビートのタイトル"
-                />
-                <textarea
-                  class="fi pb-textarea"
-                  value={beat.description}
-                  oninput={(e) => updateBeat(beat.id, { description: (e.target as HTMLTextAreaElement).value }, true)}
-                  placeholder="あらすじ・詳細（任意）"
-                  rows="3"
-                ></textarea>
-                <div class="pb-tl-row">
-                  <label class="pb-tl-label" for="tl-select-{beat.id}">タイムライン連携</label>
-                  <select
-                    id="tl-select-{beat.id}"
-                    class="fi pb-select"
-                    value={beat.timelineEventId ?? ''}
-                    onchange={(e) => updateBeat(beat.id, { timelineEventId: (e.target as HTMLSelectElement).value || null })}
-                  >
-                    <option value="">（なし）</option>
-                    {#each timelineEvents as ev}
-                      <option value={ev.id}>{ev.label ? `${ev.label} — ` : ''}{ev.title || '（タイトル未設定）'}</option>
-                    {/each}
-                  </select>
-                </div>
-                <div class="pb-edit-acts">
-                  <button class="btn btn-ghost btn-sm" onclick={() => deleteBeat(beat.id)}>🗑 削除</button>
-                  <div class="pb-edit-right">
-                    <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
-                    <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
-                  </div>
-                </div>
-              </div>
-            {:else}
-              <button class="pb-view" onclick={() => startEdit(beat)}>
-                {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
-                <div class="pb-title">{beat.title || '（タイトル未設定）'}</div>
-                {#if beat.description}<div class="pb-desc">{beat.description}</div>{/if}
-                {#if beat.timelineEventId}
-                  <div class="pb-linked-badge">🕐 {linkedEventLabel(beat.timelineEventId)}</div>
-                {/if}
-              </button>
-            {/if}
+          <div class="pb-card">
+            <button class="pb-view" onclick={() => openOverlay(beat)}>
+              {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
+              <div class="pb-title">{beat.title || '（タイトル未設定）'}</div>
+              {#if beat.description}<div class="pb-desc">{beat.description}</div>{/if}
+              {#if beat.timelineEventId}
+                <div class="pb-linked-badge">🕐 {linkedEventLabel(beat.timelineEventId)}</div>
+              {/if}
+            </button>
+            <div class="pb-move-acts">
+              <button class="pb-move-btn" onclick={() => moveUp(idx)} disabled={idx === 0} aria-label="上へ">↑</button>
+              <button class="pb-move-btn" onclick={() => moveDown(idx)} disabled={idx === beats.length - 1} aria-label="下へ">↓</button>
+            </div>
           </div>
         {/each}
       </div>
     {/if}
+  </div>
+{/if}
+
+{#if overlayId && overlayBeat}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="fs-overlay" onclick={(e) => { if (e.target === e.currentTarget) cancelEdit() }}>
+    <div class="fs-panel" role="dialog" aria-modal="true">
+      <div class="fs-header">
+        <span class="fs-header-title">{overlayBeat.title || '（タイトル未設定）'}</span>
+        <button class="iBtn del" onclick={() => { const id = overlayId!; overlayId = null; overlaySnapshot = null; deleteBeat(id) }} aria-label="削除">🗑</button>
+        <button class="iBtn" onclick={cancelEdit} aria-label="閉じる">✕</button>
+      </div>
+      <div class="fs-body">
+        <input
+          class="fi pb-input-stage"
+          value={overlayBeat.stage}
+          oninput={(e) => updateBeat(overlayId!, { stage: (e.target as HTMLInputElement).value }, true)}
+          placeholder="幕・段階（例：第一幕）"
+        />
+        <input
+          class="fi pb-input-title"
+          value={overlayBeat.title}
+          oninput={(e) => updateBeat(overlayId!, { title: (e.target as HTMLInputElement).value }, true)}
+          placeholder="ビートのタイトル"
+        />
+        <textarea
+          class="fta fs-textarea"
+          value={overlayBeat.description}
+          oninput={(e) => updateBeat(overlayId!, { description: (e.target as HTMLTextAreaElement).value }, true)}
+          placeholder="あらすじ・詳細（任意）"
+        ></textarea>
+        <div class="pb-tl-row">
+          <label class="pb-tl-label" for="tl-select-{overlayBeat.id}">タイムライン連携</label>
+          <select
+            id="tl-select-{overlayBeat.id}"
+            class="fi pb-select"
+            value={overlayBeat.timelineEventId ?? ''}
+            onchange={(e) => updateBeat(overlayId!, { timelineEventId: (e.target as HTMLSelectElement).value || null })}
+          >
+            <option value="">（なし）</option>
+            {#each timelineEvents as ev}
+              <option value={ev.id}>{ev.label ? `${ev.label} — ` : ''}{ev.title || '（タイトル未設定）'}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+      <div class="fs-footer">
+        <button class="btn btn-ghost btn-sm" onclick={cancelEdit}>キャンセル</button>
+        <button class="btn btn-primary btn-sm" onclick={confirmEdit}>完了</button>
+      </div>
+    </div>
   </div>
 {/if}
 
@@ -371,28 +377,35 @@
 
   .pb-list { display: flex; flex-direction: column; gap: 8px }
 
-  .pb-card { border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s }
+  .pb-card { border-radius: 10px; border: 1px solid var(--border); background: var(--surface); overflow: hidden; transition: border-color .15s; display: flex; align-items: flex-start }
   .pb-card:hover { border-color: var(--accent) }
-  .pb-card.editing { border-color: var(--accent) }
 
-  .pb-view { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit; width: 100% }
+  .pb-view { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; cursor: pointer; background: none; border: none; text-align: left; font-family: inherit; color: inherit }
   .pb-stage-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--accent); color: #fff; letter-spacing: .3px }
   .pb-title { font-size: 14px; font-weight: 600; color: var(--text) }
   .pb-desc { font-size: 12px; color: var(--muted); white-space: pre-wrap; line-height: 1.6 }
   .pb-linked-badge { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 2px 8px; border-radius: 20px; margin-top: 2px }
 
-  .pb-edit { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px }
-  .pb-edit-row { display: flex; gap: 8px; align-items: center }
-  .pb-input-stage { font-size: 12px; flex: 1 }
-  .pb-input-title { font-size: 14px; font-weight: 600 }
-  .pb-textarea { font-size: 13px; resize: vertical; min-height: 60px; line-height: 1.6 }
-  .pb-tl-row { display: flex; flex-direction: column; gap: 4px }
-  .pb-tl-label { font-size: 11px; color: var(--muted); font-weight: 600 }
-  .pb-select { font-size: 13px }
-  .pb-edit-acts { display: flex; justify-content: space-between; align-items: center }
-  .pb-edit-right { display: flex; gap: 6px }
-  .pb-move-acts { display: flex; gap: 2px; flex-shrink: 0 }
+  .pb-move-acts { display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; flex-shrink: 0 }
   .pb-move-btn { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px 6px; font-size: 12px; border-radius: 4px; min-width: 28px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center }
   .pb-move-btn:hover { color: var(--text); background: var(--surface2) }
   .pb-move-btn:disabled { opacity: .3; cursor: default }
+
+  /* Overlay */
+  .fs-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .fs-panel { background: var(--surface); border-radius: 14px; width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.3) }
+  .fs-header { display: flex; align-items: center; gap: 8px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .fs-header-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .fs-body { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; overflow-y: auto }
+  .pb-input-stage { font-size: 12px }
+  .pb-input-title { font-size: 16px; font-weight: 700 }
+  .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; min-height: 120px }
+  .pb-tl-row { display: flex; flex-direction: column; gap: 4px }
+  .pb-tl-label { font-size: 11px; color: var(--muted); font-weight: 600 }
+  .pb-select { font-size: 13px }
+  .fs-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0 }
+
+  .iBtn { background: none; border: none; cursor: pointer; padding: 6px; font-size: 16px; border-radius: 6px; color: var(--muted); line-height: 1 }
+  .iBtn:hover { color: var(--text); background: var(--surface2) }
+  .iBtn.del:hover { color: #e05555 }
 </style>

@@ -205,13 +205,14 @@
   <div class="pb-wrap">
     <div class="pb-toolbar">
       <UndoRedoButtons canUndo={hist.canUndo} canRedo={hist.canRedo} onUndo={undo} onRedo={redo} />
+      <button class="btn btn-primary btn-sm" onclick={addBeat}>＋ ビートを追加</button>
     </div>
 
     {#if beats.length === 0}
       <div class="pb-empty">
         <div class="pb-empty-icon">📋</div>
         <div class="pb-empty-msg">ビートがまだありません</div>
-        <div class="pb-empty-sub">ネームタブの章からビートを追加できます</div>
+        <div class="pb-empty-sub">「＋ ビートを追加」またはテンプレートから始めましょう</div>
       </div>
     {:else}
       <div class="pb-list">

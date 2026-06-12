@@ -23,6 +23,7 @@
     title: string
     groupName: string
     groupColor: string
+    chapterId: string | null
     scenes: Scene[]
   }
 
@@ -83,7 +84,7 @@
   } as const
 
   // ---- State ----
-  let subTab = $state<'episode' | 'chapter' | 'idea'>('episode')
+  let subTab = $state<'episode' | 'chapter' | 'idea'>('chapter')
 
   // Idea sub-tab
   const SCENE_TAG = '書きたいシーン'
@@ -187,7 +188,7 @@
   function addEpisode() {
     const ep: Episode = {
       id: nanoid(), number: episodes.length + 1, title: '',
-      groupName: '', groupColor: '', scenes: [],
+      groupName: '', groupColor: '', chapterId: null, scenes: [],
     }
     episodes = [...episodes, ep]
     selectedEpisodeId = ep.id
@@ -379,14 +380,14 @@
       <div class="nt-subtabs">
         <button
           class="nt-stab"
-          class:active={subTab === 'episode'}
-          onclick={() => subTab = 'episode'}
-        >一話</button>
-        <button
-          class="nt-stab"
           class:active={subTab === 'chapter'}
           onclick={() => subTab = 'chapter'}
         >章</button>
+        <button
+          class="nt-stab"
+          class:active={subTab === 'episode'}
+          onclick={() => subTab = 'episode'}
+        >話</button>
         <button
           class="nt-stab"
           class:active={subTab === 'idea'}
@@ -409,6 +410,8 @@
               <div class="nt-empty-hint">話を追加してください</div>
             {:else}
               {#each episodes as ep (ep.id)}
+                {@const linkedCh = ep.chapterId ? chapters.find(c => c.id === ep.chapterId) ?? null : null}
+                {@const linkedChIdx = linkedCh ? chapters.indexOf(linkedCh) : -1}
                 <button
                   class="nt-list-item"
                   class:active={selectedEpisodeId === ep.id}
@@ -419,6 +422,11 @@
                   {/if}
                   <span class="nt-ep-num">{ep.number}話</span>
                   <span class="nt-ep-title">{ep.title || '（無題）'}</span>
+                  {#if linkedCh}
+                    <span class="nt-ch-tag">{linkedChIdx + 1}章</span>
+                  {:else if ep.groupName}
+                    <span class="nt-ch-tag">{ep.groupName}</span>
+                  {/if}
                 </button>
               {/each}
             {/if}
@@ -443,18 +451,22 @@
                   oninput={(e) => updateEpisode(selectedEpisode!.id, { title: (e.target as HTMLInputElement).value })}
                   placeholder="タイトル（任意）"
                 />
-                <input
-                  class="fi nt-ep-group-input"
-                  list="chapter-names-list"
-                  value={selectedEpisode.groupName}
-                  oninput={(e) => updateEpisode(selectedEpisode!.id, { groupName: (e.target as HTMLInputElement).value })}
-                  placeholder="章グループ名（任意）"
-                />
-                <datalist id="chapter-names-list">
-                  {#each chapters.filter(c => c.title) as ch (ch.id)}
-                    <option value={ch.title}></option>
+                <select
+                  class="fi nt-ep-group-select"
+                  value={selectedEpisode.chapterId ?? ''}
+                  onchange={(e) => {
+                    const chId = (e.target as HTMLSelectElement).value || null
+                    const ch = chId ? chapters.find(c => c.id === chId) : null
+                    const idx = ch ? chapters.indexOf(ch) : -1
+                    const label = ch ? `${idx + 1}章${ch.title ? ` ${ch.title}` : ''}` : ''
+                    updateEpisode(selectedEpisode!.id, { chapterId: chId, groupName: label })
+                  }}
+                >
+                  <option value="">（章なし）</option>
+                  {#each chapters as ch, idx (ch.id)}
+                    <option value={ch.id}>{idx + 1}章{ch.title ? ` — ${ch.title}` : ''}</option>
                   {/each}
-                </datalist>
+                </select>
                 <div class="nt-color-row">
                   {#each GROUP_COLORS as color}
                     <button
@@ -851,7 +863,11 @@
   .nt-ep-fields { flex: 1; display: flex; flex-direction: column; gap: 6px }
   .nt-ep-num-input { width: 80px }
   .nt-ep-title-input { font-size: 15px; font-weight: 700 }
-  .nt-ep-group-input { font-size: 12px }
+  .nt-ep-group-select { font-size: 12px }
+  .nt-ch-tag {
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+  }
   .nt-color-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center }
   .nt-color-btn {
     width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent;

@@ -432,10 +432,11 @@
                 <div class="nt-empty">場面がありません。「＋ 場面」で追加してください。</div>
               {:else}
                 {#each selectedEpisode.scenes as scene, idx (scene.id)}
-                  <div class="nt-scene-card" class:editing={sceneEditId === scene.id}>
+                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                  <div class="nt-scene-card" class:editing={sceneEditId === scene.id} onclick={() => sceneEditId = sceneEditId === scene.id ? null : scene.id}>
                     <!-- Scene header row -->
                     <div class="nt-scene-top">
-                      <div class="nt-role-btns">
+                      <div class="nt-role-btns" onclick={(e) => e.stopPropagation()}>
                         {#each ROLES as role}
                           <button
                             class="nt-role-badge"
@@ -445,15 +446,16 @@
                           >{role}</button>
                         {/each}
                       </div>
-                      <div class="nt-scene-acts">
+                      <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                         <button class="nt-move-btn" onclick={() => moveScene(selectedEpisode!.id, idx, -1)} disabled={idx === 0}>↑</button>
                         <button class="nt-move-btn" onclick={() => moveScene(selectedEpisode!.id, idx, 1)} disabled={idx === selectedEpisode.scenes.length - 1}>↓</button>
-                        <button class="iBtn" onclick={() => sceneEditId = sceneEditId === scene.id ? null : scene.id}>✎</button>
                         <button class="iBtn del" onclick={() => deleteScene(selectedEpisode!.id, scene.id)}>🗑</button>
                       </div>
                     </div>
 
                     {#if sceneEditId === scene.id}
+                      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                      <div onclick={(e) => e.stopPropagation()} style="display:contents">
                       <textarea
                         class="fta nt-scene-memo"
                         value={scene.memo}
@@ -474,6 +476,7 @@
                           placeholder="セリフ・台詞メモ"
                         ></textarea>
                       {/if}
+                      </div>
                     {:else}
                       {#if scene.memo}
                         <div class="nt-scene-preview">{scene.memo}</div>
@@ -577,21 +580,23 @@
                 <div class="nt-empty">ビートがありません。「＋ ビート」またはテンプレートから追加できます。</div>
               {:else}
                 {#each selectedChapter.beats as beat, idx (beat.id)}
-                  <div class="nt-scene-card" class:editing={beatEditId === beat.id}>
+                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                  <div class="nt-scene-card" class:editing={beatEditId === beat.id} onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}>
                     <div class="nt-scene-top">
                       <div class="nt-beat-labels">
                         {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
                         <span class="nt-beat-title">{beat.title || '（タイトル未設定）'}</span>
                       </div>
-                      <div class="nt-scene-acts">
+                      <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                         <button class="nt-move-btn" onclick={() => moveBeat(selectedChapter!.id, idx, -1)} disabled={idx === 0}>↑</button>
                         <button class="nt-move-btn" onclick={() => moveBeat(selectedChapter!.id, idx, 1)} disabled={idx === selectedChapter.beats.length - 1}>↓</button>
-                        <button class="iBtn" onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}>✎</button>
                         <button class="iBtn del" onclick={() => deleteBeat(selectedChapter!.id, beat.id)}>🗑</button>
                       </div>
                     </div>
 
                     {#if beatEditId === beat.id}
+                      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                      <div onclick={(e) => e.stopPropagation()} style="display:contents">
                       <input
                         class="fi"
                         value={beat.stage}
@@ -610,6 +615,7 @@
                         oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { memo: (e.target as HTMLTextAreaElement).value })}
                         placeholder="メモ・詳細"
                       ></textarea>
+                      </div>
                     {:else}
                       {#if beat.memo}
                         <div class="nt-scene-preview">{beat.memo}</div>
@@ -664,8 +670,11 @@
         {:else}
           <div class="nt-idea-list">
             {#each sceneIdeas as idea (idea.id)}
-              <div class="nt-idea-card" class:editing={ideaEditId === idea.id}>
+              <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+              <div class="nt-idea-card" class:editing={ideaEditId === idea.id} onclick={() => ideaEditId !== idea.id && startIdeaEdit(idea)}>
                 {#if ideaEditId === idea.id}
+                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                  <div onclick={(e) => e.stopPropagation()} style="display:contents">
                   <input
                     class="fi nt-idea-title-edit"
                     bind:value={ideaEditTitle}
@@ -685,11 +694,11 @@
                     <button class="btn btn-primary btn-sm" onclick={saveIdeaEdit}>保存</button>
                     <button class="btn btn-ghost btn-sm" onclick={() => ideaEditId = null}>キャンセル</button>
                   </div>
+                  </div>
                 {:else}
                   <div class="nt-idea-card-top">
                     {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
-                    <div class="nt-scene-acts">
-                      <button class="iBtn" onclick={() => startIdeaEdit(idea)}>✎</button>
+                    <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                       <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
                     </div>
                   </div>
@@ -800,9 +809,10 @@
   .nt-scene-card {
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); margin-bottom: 8px;
-    overflow: hidden; transition: border-color .15s;
+    overflow: hidden; transition: border-color .15s; cursor: pointer;
   }
   .nt-scene-card:hover { border-color: var(--accent) }
+  .nt-scene-card.editing { cursor: default }
   .nt-scene-card.editing { border-color: var(--accent) }
   .nt-scene-top {
     display: flex; align-items: center; gap: 8px;
@@ -881,10 +891,10 @@
   .nt-idea-card {
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); overflow: hidden; transition: border-color .15s;
-    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
   }
   .nt-idea-card:hover { border-color: var(--accent) }
-  .nt-idea-card.editing { border-color: var(--accent); padding: 12px 14px; gap: 8px }
+  .nt-idea-card.editing { border-color: var(--accent); padding: 12px 14px; gap: 8px; cursor: default }
   .nt-idea-card-top { display: flex; align-items: flex-start; gap: 8px }
   .nt-idea-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text) }
   .nt-idea-title-edit { font-size: 14px; font-weight: 700 }

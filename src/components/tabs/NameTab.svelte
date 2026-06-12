@@ -1,7 +1,6 @@
 <script lang="ts">
   import { nanoid } from 'nanoid'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
-  import { appStore } from '../../lib/stores/appStore.svelte'
 
   // ---- Types ----
   type SceneRole = '起' | '承' | '転' | '結' | '自由'
@@ -280,7 +279,6 @@
 </script>
 
 {#if loaded && projectStore.currentProjectId}
-  <!-- Full-screen overlay -->
   <div class="nt-overlay">
     <!-- Header -->
     <div class="nt-header">
@@ -297,7 +295,6 @@
           onclick={() => subTab = 'chapter'}
         >章</button>
       </div>
-      <button class="nt-close iBtn" onclick={() => appStore.setTab('plot')} aria-label="閉じる">✕</button>
     </div>
 
     <!-- ============ 一話サブタブ ============ -->
@@ -350,10 +347,16 @@
                 />
                 <input
                   class="fi nt-ep-group-input"
+                  list="chapter-names-list"
                   value={selectedEpisode.groupName}
                   oninput={(e) => updateEpisode(selectedEpisode!.id, { groupName: (e.target as HTMLInputElement).value })}
                   placeholder="章グループ名（任意）"
                 />
+                <datalist id="chapter-names-list">
+                  {#each chapters.filter(c => c.title) as ch (ch.id)}
+                    <option value={ch.title}></option>
+                  {/each}
+                </datalist>
                 <div class="nt-color-row">
                   {#each GROUP_COLORS as color}
                     <button
@@ -583,9 +586,7 @@
 
 <style>
   .nt-overlay {
-    position: fixed; inset: 0; z-index: 150;
-    background: var(--bg);
-    display: flex; flex-direction: column;
+    height: 100%; display: flex; flex-direction: column; overflow: hidden;
   }
 
   /* Header */
@@ -607,7 +608,6 @@
   }
   .nt-stab:hover { color: var(--text); background: var(--surface2) }
   .nt-stab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
-  .nt-close { font-size: 18px; flex-shrink: 0 }
 
   /* Body layout */
   .nt-body {

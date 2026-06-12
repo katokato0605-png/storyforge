@@ -4,7 +4,10 @@
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
 
-  const TEMPLATE = `オリジナル作品の作り方
+  const TEMPLATES_LIST = [
+    {
+      label: 'オリジナル作品の作り方',
+      content: `オリジナル作品の作り方
 ①メディアは?(ゲーム? アニメ? 漫画? 実写?)
 
 
@@ -23,8 +26,81 @@
 ⑥「これ作りたい! ワクワクする!」まで辿り着く
 
 
-⑦システムやプロットやキャラクターなどの深掘りへ…`
+⑦システムやプロットやキャラクターなどの深掘りへ…`,
+    },
+    {
+      label: 'ストーリーライティング22の法則',
+      content: `ストーリーライティング22の法則
 
+１．成功ではなく挑戦にフォーカスする
+主人公の成功という部分ではなく、諦めずに挑戦し続けるという部分を賞賛すること
+
+２．自分ではなく読者が求めているものを書く
+ライターとしての自分が書いていて楽しいものではなく、読者にとって面白いものを書くこと。この２つには、非常に大きな違いがある。
+
+３．テーマの本質を探る
+テーマ探しは非常に重要だ。しかし、ストーリーの本質は書き終えてみるまでは、ライターにも分からない。だから、書き終えたらリライト（書き直し）しよう。
+
+４．定番のストーリーラインを抑える
+むかしむかし、あるところに…。毎日…。そんなある日…。そして…。そして…。そしてついに…。
+
+５．キャラクターの魅力を伝える
+キャラクターをシンプルにして、キャラクターに焦点を合わせて、キャラクター同士の力や魅力を結合させよう。
+
+６．キャラクターに試練を与える
+キャラクターは何が得意で何が好きなのだろうか？それと正反対の試練を与えて、キャラクターに挑戦させよう。キャラクターは、その試練にどのように立ち向かうだろうか？
+
+７．エンディングを決めておく
+ストーリーの中盤部分を書く前に、エンディングを決めておこう。エンディングを考えるのは本当に骨が折れる仕事だ。だからこそ、前もってやっておこう。
+
+８．より良いものを追求し続ける
+ストーリーを書き上げたら、それが完璧になっていなくても公開しよう。そして、また書き続けて、次はもっと良いものを作ろう。
+
+９．アイデアに詰まったらリサーチ
+アイデアに詰まったら、"書くべきではない展開"のリストを作ろう。多くの場合、材料を集めれば集めるほど、良いアイデアが湧いてくる。
+
+１０．自分の中の常識を破壊する
+好きなストーリーから離れよう。あなたのアイデアは、それらのストーリーから大きな影響を受けている。自分のストーリーを書き始める前に、その事実を把握しておこう。
+
+１１．アイデアを紙に書き起こす
+アイデアを紙に書き起こすと頭の中が整理される。そして、そのアイデアが、あなたの頭から離れなければ、それは素晴らしいアイデアだ。そして、そのアイデアを他人に話してはいけない。
+
+１２．一番最初のアイデアは無視する
+一番最初に浮かんでくるアイデアは無視しよう。二番目も、三番目も…。すると、明確な良いアイデアが浮かんでくる。そして、そうやって最終的に出て来たアイデアに、あなた自身が驚くはずだ。
+
+１３．魅力的なキャラクター作りの鉄則を知る
+キャラクターにはハッキリとした意見を持たせよう。受動的で順応的なキャラクターは読者にとって退屈だ。
+
+１４．自分の信念を知る
+なぜ、あなたは、そのストーリーを伝えなければいけないのだろうか？あなたが心から伝えたい信念はなんだろうか？あなたの信念が、ストーリーの根幹となる。
+
+１５．リアルな感情描写をする
+もし、あなたがストーリーの中のキャラクターだとしたら、どう感じるだろうか？そうした感情描写の正直さが、非日常的な状況に親近感を与える。
+
+１６．キャラクターの背景を作り込む
+キャラクターが抱えているリスクや過去は何だろうか？なぜ、そのキャラクターがそうなったのかという背景を作り込もう。もし成功しなければどうなるか？挑戦に対して障害を用意しよう。
+
+１７．継続した努力！
+あなたの努力の全てはムダにはならない。もしうまくいっていなくても、気にせず進み続けよう。そうした経験は、結局あなたの糧となって戻ってくる。
+
+１８．自分と向き合う
+自分自身を知ろう。自分のベストの力が出ている時と、ただ焦って何もできなくなっている時の違いを知ろう。ストーリーライティングは、あなたを磨くのではなく、あなたをテストする。
+
+１９．試練の到来は偶然、試練の克服は必然
+キャラクターに偶然、試練が重なることは素晴らしい。しかし、その試練を克服する際に偶然の要素があると興ざめしてしまう。
+
+２０．エクササイズ！
+嫌いな映画を見て、その映画の構成要素を分析しよう。あなたは、その映画を良くするために、どのようにアレンジできるだろうか？
+
+２１．人のリアルな心理を知る
+自分自身の様々な行動や、その行動を取るにいたった動機を知ろう。ストーリーは、ただかっこ良く書けば良いものではない。
+
+２２．ストーリーを一言で表せるようにする
+あなたのストーリーのエッセンス（肝）は何だろうか？それを短い言葉で伝えるなら？もし、あなたの中で、これらのことが明確なら、あなたはそこからキャリアを築くことができる。`,
+    },
+  ]
+
+  let showTemplateMenu = $state(false)
   let filterLinked = $state(false)
   let filterTag = $state('')
   let newContent = $state('')
@@ -53,9 +129,10 @@
     if (e.key === 'Escape') editId = null
   }
 
-  function useTemplate() {
-    newContent = TEMPLATE
+  function useTemplate(content: string) {
+    newContent = content
     adding = true
+    showTemplateMenu = false
   }
 
   onMount(() => ideaStore.load())
@@ -115,7 +192,18 @@
           この作品のみ
         </label>
       {/if}
-      <button class="btn btn-ghost btn-sm" onclick={useTemplate}>📋 テンプレ</button>
+      <div class="tmpl-wrap">
+        <button class="btn btn-ghost btn-sm" onclick={() => showTemplateMenu = !showTemplateMenu}>📋 テンプレ ▾</button>
+        {#if showTemplateMenu}
+          <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+          <div class="tmpl-backdrop" onclick={() => showTemplateMenu = false}></div>
+          <div class="tmpl-menu">
+            {#each TEMPLATES_LIST as tmpl}
+              <button class="tmpl-item" onclick={() => useTemplate(tmpl.content)}>{tmpl.label}</button>
+            {/each}
+          </div>
+        {/if}
+      </div>
       <button class="btn btn-primary btn-sm" onclick={() => adding = !adding}>
         {adding ? 'キャンセル' : '＋ 追加'}
       </button>
@@ -235,4 +323,9 @@
   .iBtn.linked { color: var(--accent); border-color: var(--accent) }
   .tag-btn     { cursor: pointer; border: none; background: var(--surface2); transition: .1s }
   .tag-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent) }
+  .tmpl-wrap   { position: relative }
+  .tmpl-backdrop { position: fixed; inset: 0; z-index: 10 }
+  .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }
+  .tmpl-item   { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text); font-family: inherit }
+  .tmpl-item:hover { background: var(--surface2) }
 </style>

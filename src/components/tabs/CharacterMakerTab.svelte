@@ -119,8 +119,9 @@
   let saveSuccess = $state(false)
   let editingCategory = $state<string | null>(null)
   let newItemText = $state('')
-  let searchText = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
   let pinned = $state<Record<string, boolean>>({ backbone: false, looks: false, personality: false })
+  let searchingCard = $state<string | null>(null)
+  let cardSearch = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
 
   function pickRandom(arr: string[]) {
     return arr[Math.floor(Math.random() * arr.length)]
@@ -156,10 +157,17 @@
     if (cat) customItems[key] = [...cat.items]
   }
 
-  function filteredItems(key: string) {
-    const q = searchText[key].trim().toLowerCase()
+  function filteredCardItems(key: string) {
+    const q = cardSearch[key].trim().toLowerCase()
     if (!q) return customItems[key]
     return customItems[key].filter(item => item.toLowerCase().includes(q))
+  }
+
+  function selectCardItem(key: string, item: string) {
+    if (result) result = { ...result, [key]: item }
+    searchingCard = null
+    cardSearch[key] = ''
+    saveSuccess = false
   }
 
   async function saveToLore() {
@@ -181,7 +189,6 @@
     <!-- Categories -->
     <div class="cm-cats">
       {#each categories as cat}
-        {@const items = filteredItems(cat.key)}
         <div class="cm-cat">
           <div class="cm-cat-header">
             <span class="cm-cat-icon">{cat.icon}</span>
@@ -194,33 +201,15 @@
             >{editingCategory === cat.key ? '完了' : '＋ 編集'}</button>
           </div>
 
-          <!-- Search box -->
-          <div class="cm-search-row">
-            <input
-              class="fi cm-search-input"
-              placeholder="🔍 絞り込み…"
-              value={searchText[cat.key]}
-              oninput={e => searchText[cat.key] = (e.target as HTMLInputElement).value}
-            />
-            {#if searchText[cat.key]}
-              <span class="cm-search-count">{items.length}件</span>
-              <button class="cm-search-clear" onclick={() => searchText[cat.key] = ''}>✕</button>
-            {/if}
-          </div>
-
           <div class="cm-tags">
-            {#each items as item, i}
-              {@const realIdx = customItems[cat.key].indexOf(item)}
+            {#each customItems[cat.key] as item, i}
               <span class="cm-tag" class:editing={editingCategory === cat.key}>
                 {item}
                 {#if editingCategory === cat.key}
-                  <button class="cm-tag-del" onclick={() => removeItem(cat.key, realIdx)} aria-label="削除">×</button>
+                  <button class="cm-tag-del" onclick={() => removeItem(cat.key, i)} aria-label="削除">×</button>
                 {/if}
               </span>
             {/each}
-            {#if items.length === 0}
-              <span class="cm-no-match">一致する項目がありません</span>
-            {/if}
           </div>
 
           {#if editingCategory === cat.key}
@@ -253,20 +242,54 @@
         <div class="cm-result-title">生成されたキャラクター</div>
         <div class="cm-result-cards">
           {#each categories as cat}
+            {@const isSearching = searchingCard === cat.key}
+            {@const hits = filteredCardItems(cat.key)}
             <div class="cm-result-card" class:pinned={pinned[cat.key]}>
               <div class="cm-result-cat-row">
                 <span class="cm-result-cat">{cat.icon} {cat.label}</span>
-                <button
-                  class="cm-pin-btn"
-                  class:active={pinned[cat.key]}
-                  onclick={() => pinned[cat.key] = !pinned[cat.key]}
-                  title={pinned[cat.key] ? '固定解除' : '固定（再生成でも変わらない）'}
-                  aria-label={pinned[cat.key] ? '固定解除' : '固定'}
-                >{pinned[cat.key] ? '📌' : '📍'}</button>
+                <div class="cm-card-actions">
+                  <button
+                    class="cm-search-toggle"
+                    class:active={isSearching}
+                    onclick={() => { searchingCard = isSearching ? null : cat.key; cardSearch[cat.key] = '' }}
+                    title="手動で選択"
+                    aria-label="検索して選択"
+                  >🔍</button>
+                  <button
+                    class="cm-pin-btn"
+                    class:active={pinned[cat.key]}
+                    onclick={() => pinned[cat.key] = !pinned[cat.key]}
+                    title={pinned[cat.key] ? '固定解除' : '固定（再生成でも変わらない）'}
+                    aria-label={pinned[cat.key] ? '固定解除' : '固定'}
+                  >{pinned[cat.key] ? '📌' : '📍'}</button>
+                </div>
               </div>
               <div class="cm-result-val">{result[cat.key]}</div>
               {#if pinned[cat.key]}
                 <div class="cm-pin-label">固定中</div>
+              {/if}
+              {#if isSearching}
+                <div class="cm-card-search">
+                  <input
+                    class="fi cm-card-search-input"
+                    placeholder="絞り込み…"
+                    value={cardSearch[cat.key]}
+                    oninput={e => cardSearch[cat.key] = (e.target as HTMLInputElement).value}
+                    autofocus
+                  />
+                  <div class="cm-card-search-list">
+                    {#each hits as item}
+                      <button
+                        class="cm-card-search-item"
+                        class:current={item === result[cat.key]}
+                        onclick={() => selectCardItem(cat.key, item)}
+                      >{item}</button>
+                    {/each}
+                    {#if hits.length === 0}
+                      <span class="cm-no-match">一致なし</span>
+                    {/if}
+                  </div>
+                </div>
               {/if}
             </div>
           {/each}
@@ -306,12 +329,6 @@
   .cm-edit-btn:hover { color: var(--text); border-color: var(--accent) }
   .cm-edit-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent) }
 
-  .cm-search-row { display: flex; align-items: center; gap: 6px }
-  .cm-search-input { flex: 1; font-size: 12px; padding: 5px 10px; border-radius: 20px }
-  .cm-search-count { font-size: 11px; color: var(--muted); white-space: nowrap }
-  .cm-search-clear { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 2px 6px; border-radius: 50%; transition: color .1s }
-  .cm-search-clear:hover { color: var(--text) }
-
   .cm-tags   { display: flex; flex-wrap: wrap; gap: 6px }
   .cm-tag    { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; color: var(--text) }
   .cm-tag.editing { padding-right: 4px }
@@ -344,10 +361,20 @@
   .cm-result-cat-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px }
   .cm-result-cat  { font-size: 11px; color: var(--muted) }
   .cm-result-val  { font-size: 15px; font-weight: 700 }
+  .cm-card-actions { display: flex; align-items: center; gap: 4px }
+  .cm-search-toggle { background: none; border: none; cursor: pointer; font-size: 13px; padding: 0; opacity: .4; transition: opacity .15s }
+  .cm-search-toggle:hover { opacity: 1 }
+  .cm-search-toggle.active { opacity: 1 }
   .cm-pin-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 0; opacity: .5; transition: opacity .15s, transform .1s }
   .cm-pin-btn:hover { opacity: 1 }
   .cm-pin-btn.active { opacity: 1; transform: rotate(-15deg) }
   .cm-pin-label { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: .5px; margin-top: 4px }
+  .cm-card-search { margin-top: 8px; display: flex; flex-direction: column; gap: 6px }
+  .cm-card-search-input { font-size: 12px; padding: 5px 10px; border-radius: 8px; width: 100%; box-sizing: border-box }
+  .cm-card-search-list { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface) }
+  .cm-card-search-item { background: none; border: none; cursor: pointer; text-align: left; padding: 6px 10px; font-size: 12px; color: var(--text); font-family: inherit; transition: background .1s; border-radius: 6px }
+  .cm-card-search-item:hover { background: var(--surface2) }
+  .cm-card-search-item.current { color: var(--accent); font-weight: 700 }
   .cm-result-summary { font-size: 13px; color: var(--muted); line-height: 1.7; background: var(--surface2); border-radius: 8px; padding: 10px 14px }
   .cm-result-summary strong { color: var(--text) }
   .cm-result-actions { display: flex; gap: 8px; flex-wrap: wrap }

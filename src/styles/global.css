@@ -1,5 +1,15 @@
 *{box-sizing:border-box;margin:0;padding:0}
 
+/* iOS長押し時の青い選択枠・コールアウトメニューを抑制（オーバーレイ内は除く） */
+button,[draggable="true"],[role="button"]{
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+}
+.fs-overlay button,.fs-overlay [role="button"],
+.fs-panel button,.fs-panel [role="button"]{
+  -webkit-touch-callout:default;
+}
+
 [data-theme="dark"]{
   --bg:#0e0e16;--surface:#17172a;--surface2:#20203a;--border:#2a2a48;
   --accent:#7c6af7;--accent2:#5b4ed6;--text:#e8e6f0;--muted:#8080a8;

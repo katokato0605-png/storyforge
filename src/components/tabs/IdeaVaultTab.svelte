@@ -770,6 +770,21 @@
     const pid = projectStore.currentProjectId ?? null
     ideaStore.update(id, { linkedProjectId: linked ? null : pid })
   }
+
+  function getTagProject(tag: string) {
+    return projectStore.projects.find(p => p.title === tag) ?? null
+  }
+
+  function handleTagClick(e: MouseEvent, tag: string) {
+    e.stopPropagation()
+    const proj = getTagProject(tag)
+    if (proj) {
+      projectStore.selectProject(proj.id)
+      appStore.setTab('plot')
+    } else {
+      filterTag = filterTag === tag ? '' : tag
+    }
+  }
 </script>
 
 <datalist id="idea-tag-suggestions">
@@ -887,7 +902,13 @@
           {#if idea.tags.length > 0}
             <div class="tags">
               {#each idea.tags as tag}
-                <span class="tag">{tag}</span>
+                {@const proj = getTagProject(tag)}
+                <span
+                  class="tag"
+                  class:tag-linked={!!proj}
+                  onclick={(e) => handleTagClick(e, tag)}
+                  title={proj ? `「${proj.title}」を開く` : `「${tag}」で絞り込む`}
+                >{tag}{#if proj} ↗{/if}</span>
               {/each}
             </div>
           {/if}
@@ -975,6 +996,8 @@
   .fs-textarea { flex: 1; resize: none; font-size: 14px; line-height: 1.8; border: none; background: none; outline: none; color: var(--text); font-family: inherit; width: 100% }
   .fs-footer   { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap }
   .fs-tags-input { flex: 1; min-width: 120px; font-size: 13px }
+  .tag-linked  { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); cursor: pointer }
+  .tag-linked:hover { background: color-mix(in srgb, var(--accent) 35%, transparent) }
   .tmpl-wrap   { position: relative }
   .tmpl-backdrop { position: fixed; inset: 0; z-index: 10 }
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }

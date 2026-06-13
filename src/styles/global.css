@@ -1,9 +1,15 @@
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
 /* iOS長押し時の青い選択枠・コールアウトメニューを抑制（オーバーレイ内は除く） */
 button,[draggable="true"],[role="button"]{
-  -webkit-tap-highlight-color:transparent;
   -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+}
+.bot-nav{
+  -webkit-user-select:none;
+  user-select:none;
 }
 .fs-overlay button,.fs-overlay [role="button"],
 .fs-panel button,.fs-panel [role="button"]{

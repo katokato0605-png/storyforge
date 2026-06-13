@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount } from 'svelte'
   import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'

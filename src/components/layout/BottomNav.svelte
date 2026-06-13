@@ -2,17 +2,15 @@
   import { appStore, type TabId } from '../../lib/stores/appStore.svelte'
   import { chapterStore } from '../../lib/stores/chapterStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
+  import { createDragSort } from '../../lib/utils/dragSort.svelte'
 
   let drawerOpen = $state(false)
+  const ds = createDragSort()
 
-  const tabs: { id: TabId; icon: string; label: string }[] = [
-    { id: 'plot',     icon: '📋', label: 'プロット' },
-    { id: 'timeline', icon: '🕐', label: 'タイム' },
-    { id: 'lore',     icon: '📖', label: '設定' },
-    { id: 'ideas',    icon: '💡', label: 'アイデア' },
-    { id: 'charmaker', icon: '🎲', label: 'キャラメーカー' },
-    { id: 'name',      icon: '📝', label: 'ネーム' },
-  ]
+  function onTabDrop(toIdx: number) {
+    const next = ds.drop([...appStore.tabs], toIdx)
+    if (next) appStore.reorderTabs(next)
+  }
 
   function selectTab(id: TabId) {
     appStore.setTab(id)
@@ -88,19 +86,25 @@
     </div>
   {/if}
 
-  {#each tabs as tab}
+  {#each appStore.tabs as tab, idx (tab.id)}
     {#if !projectStore.currentProjectId && tab.id !== 'ideas'}
       <!-- プロジェクト未選択時はアイデアのみ表示 -->
     {:else}
       <button
         class="bn-tab"
         class:active={appStore.activeTab === tab.id && !drawerOpen}
+        class:dragging={ds.dragIdx === idx}
+        class:drag-over={ds.dragOverIdx === idx}
+        data-drag-idx={idx}
         onclick={() => selectTab(tab.id)}
         aria-label={tab.label}
         aria-current={appStore.activeTab === tab.id && !drawerOpen ? 'page' : undefined}
+        ontouchstart={(e) => { if (e.touches.length === 1) ds.touchstart(idx) }}
+        ontouchmove={(e) => ds.touchmove(e)}
+        ontouchend={() => { const to = ds.dragOverIdx; if (to !== null) onTabDrop(to); else ds.end() }}
       >
         <span class="bn-icon">{tab.icon}</span>
-        <span class="bn-lbl">{tab.label}</span>
+        <span class="bn-lbl">{tab.shortLabel}</span>
       </button>
     {/if}
   {/each}
@@ -124,6 +128,8 @@
     font-size: 10px; transition: .1s; min-width: 0;
   }
   .bn-tab:hover, .bn-tab.active { color: var(--accent) }
+  .bn-tab.dragging  { opacity: 0.35 }
+  .bn-tab.drag-over { background: color-mix(in srgb, var(--accent) 18%, transparent) }
   .bn-ch-slot {
     flex: 1; display: flex; align-items: stretch;
     border-right: 1px solid var(--border);

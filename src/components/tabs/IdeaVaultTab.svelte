@@ -712,7 +712,8 @@
     if (e.key === 'Escape') editId = null
   }
 
-  function useTemplate(content: string) {
+  function useTemplate(label: string, content: string) {
+    newTitle = label
     newContent = content
     adding = true
     showTemplateMenu = false
@@ -820,7 +821,7 @@
           <div class="tmpl-backdrop" onclick={() => showTemplateMenu = false}></div>
           <div class="tmpl-menu">
             {#each TEMPLATES_LIST as tmpl}
-              <button class="tmpl-item" onclick={() => useTemplate(tmpl.content)}>{tmpl.label}</button>
+              <button class="tmpl-item" onclick={() => useTemplate(tmpl.label, tmpl.content)}>{tmpl.label}</button>
             {/each}
           </div>
         {/if}

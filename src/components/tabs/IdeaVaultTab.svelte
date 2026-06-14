@@ -972,7 +972,7 @@
 {/if}
 
 <style>
-  .tab-wrap    { display: flex; flex-direction: column; height: 100%; overflow: hidden }
+  .tab-wrap    { display: flex; flex-direction: column; height: 100%; width: 100%; min-width: 0; overflow: hidden }
   .tab-header  { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
   .tab-title   { font-size: 16px; font-weight: 700; margin-right: auto }
   .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
@@ -982,7 +982,7 @@
   .add-form .fta { margin-bottom: 8px }
   .add-row     { display: flex; gap: 8px; align-items: center }
   .add-row .fi { flex: 1 }
-  .idea-list   { flex: 1; overflow-y: auto; padding: 12px 20px }
+  .idea-list   { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 20px }
   .idea-card   { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: grab; transition: border-color .15s, opacity .12s }
   .idea-card:hover { border-color: var(--accent) }
   .idea-card.dragging { opacity: 0.35; cursor: grabbing }

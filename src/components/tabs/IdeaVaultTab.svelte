@@ -680,7 +680,6 @@
   ]
 
   let showTemplateMenu = $state(false)
-  let filterLinked = $state(false)
   let filterTag = $state('')
   let newTitle = $state('')
   let newContent = $state('')
@@ -722,8 +721,13 @@
   onMount(() => ideaStore.load())
 
   const filtered = $derived.by(() => {
+    const pid = projectStore.currentProjectId
     const base = ideaStore.ideas.filter(i => {
-      if (filterLinked && i.linkedProjectId !== projectStore.currentProjectId) return false
+      if (pid) {
+        if (i.linkedProjectId !== pid) return false
+      } else {
+        if (i.linkedProjectId) return false
+      }
       if (filterTag && !i.tags.includes(filterTag)) return false
       return true
     })
@@ -744,7 +748,7 @@
     if (!newTitle.trim() && !newContent.trim()) return
     const tags = newTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
-    const linkedProjectId = matchedProject ? matchedProject.id : (filterLinked ? (projectStore.currentProjectId ?? null) : null)
+    const linkedProjectId = matchedProject ? matchedProject.id : (projectStore.currentProjectId ?? null)
     await ideaStore.create(newTitle.trim(), newContent.trim(), tags, linkedProjectId)
     newTitle = ''
     newContent = ''
@@ -808,12 +812,6 @@
             <option value={tag}>{tag}</option>
           {/each}
         </select>
-      {/if}
-      {#if projectStore.currentProjectId}
-        <label class="linked-toggle">
-          <input type="checkbox" checked={filterLinked} onchange={() => filterLinked = !filterLinked} />
-          この作品のみ
-        </label>
       {/if}
       <div class="tmpl-wrap">
         <button class="btn btn-ghost btn-sm" onclick={() => showTemplateMenu = !showTemplateMenu}>📋 テンプレ ▾</button>

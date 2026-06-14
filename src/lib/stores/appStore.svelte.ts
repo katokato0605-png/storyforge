@@ -1,4 +1,4 @@
-export type TabId = 'plot' | 'timeline' | 'lore' | 'ideas' | 'charmaker' | 'name'
+export type TabId = 'plot' | 'timeline' | 'lore' | 'ideas' | 'charmaker' | 'name' | 'diagram'
 export type Theme = 'dark' | 'light'
 
 export interface TabDef {
@@ -15,6 +15,7 @@ const DEFAULT_TABS: TabDef[] = [
   { id: 'ideas',     icon: '💡', label: 'アイデア',       shortLabel: 'アイデア' },
   { id: 'charmaker', icon: '🎲', label: 'キャラメーカー', shortLabel: 'キャラ' },
   { id: 'name',      icon: '📝', label: 'ネーム',         shortLabel: 'ネーム' },
+  { id: 'diagram',   icon: '🗺', label: '物語構図',       shortLabel: '構図' },
 ]
 
 function loadTabOrder(): TabDef[] {

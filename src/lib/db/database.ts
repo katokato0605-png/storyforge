@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Project, Chapter, ProjectNote, Idea, LoreEntry, BackupEntry, Meta } from './schema'
+import type { Project, Chapter, ProjectNote, Idea, LoreEntry, BackupEntry, Meta, TabImage } from './schema'
 
 class StoryForgeDB extends Dexie {
   projects!: EntityTable<Project, 'id'>
@@ -9,6 +9,7 @@ class StoryForgeDB extends Dexie {
   loreEntries!: EntityTable<LoreEntry, 'id'>
   backups!: EntityTable<BackupEntry, 'id'>
   meta!: EntityTable<Meta, 'key'>
+  tabImages!: EntityTable<TabImage, 'id'>
 
   constructor() {
     super('StoryForge')
@@ -50,6 +51,16 @@ class StoryForgeDB extends Dexie {
       loreEntries:  'id, projectId, type, *tags, createdAt',
       backups:      'id, generation, createdAt',
       meta:         'key',
+    })
+    this.version(5).stores({
+      projects:     'id, updatedAt',
+      chapters:     'id, projectId, order, updatedAt',
+      projectNotes: 'id, projectId, type, updatedAt',
+      ideas:        'id, *tags, linkedProjectId, createdAt, isTrash',
+      loreEntries:  'id, projectId, type, *tags, createdAt',
+      backups:      'id, generation, createdAt',
+      meta:         'key',
+      tabImages:    'id, [projectId+tabId], createdAt',
     })
   }
 }

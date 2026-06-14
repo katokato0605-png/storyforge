@@ -6,6 +6,7 @@
   import { createHistory } from '../../lib/utils/history.svelte'
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
+  import ImageGallery from '../ui/ImageGallery.svelte'
 
   const epDs = createDragSort()
   const chDs = createDragSort()
@@ -873,6 +874,7 @@
         {/if}
       </div>
     {/if}
+    <ImageGallery projectId={projectStore.currentProjectId} tabId="name" />
   </div>
 {/if}
 
@@ -896,7 +898,7 @@
   .nt-stab {
     padding: 5px 16px; border-radius: 20px; border: 1px solid var(--border);
     background: none; cursor: pointer; font-size: 13px; color: var(--muted);
-    font-family: inherit; transition: .1s;
+    font-family: inherit; transition: .1s; flex-shrink: 0; white-space: nowrap;
   }
   .nt-stab:hover { color: var(--text); background: var(--surface2) }
   .nt-stab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
@@ -1054,7 +1056,7 @@
   }
   .nt-idea-hint { font-size: 12px; color: var(--muted) }
   .nt-idea-list {
-    flex: 1; overflow-y: auto; padding: 12px 20px 80px;
+    flex: 1; overflow-y: scroll; padding: 12px 20px 80px;
     display: flex; flex-direction: column; gap: 10px;
   }
   .nt-idea-form {

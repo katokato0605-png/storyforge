@@ -982,7 +982,7 @@
   .add-form .fta { margin-bottom: 8px }
   .add-row     { display: flex; gap: 8px; align-items: center }
   .add-row .fi { flex: 1 }
-  .idea-list   { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 20px }
+  .idea-list   { flex: 1; overflow-y: scroll; overflow-x: hidden; padding: 12px 20px }
   .idea-card   { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: grab; transition: border-color .15s, opacity .12s }
   .idea-card:hover { border-color: var(--accent) }
   .idea-card.dragging { opacity: 0.35; cursor: grabbing }

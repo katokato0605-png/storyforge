@@ -65,3 +65,12 @@ export interface Meta {
   key: string
   value: unknown
 }
+
+export interface TabImage {
+  id: string
+  projectId: string
+  tabId: string
+  name: string
+  dataUrl: string
+  createdAt: number
+}

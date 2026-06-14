@@ -1,6 +1,7 @@
 <script lang="ts">
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import Timeline from '../writing/Timeline.svelte'
+  import ImageGallery from '../ui/ImageGallery.svelte'
 </script>
 
 {#if projectStore.currentProjectId}
@@ -11,6 +12,7 @@
     <div class="tab-body">
       <Timeline projectId={projectStore.currentProjectId} />
     </div>
+    <ImageGallery projectId={projectStore.currentProjectId} tabId="timeline" />
   </div>
 {/if}
 

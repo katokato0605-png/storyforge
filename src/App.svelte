@@ -10,6 +10,7 @@
   import IdeaVaultTab from './components/tabs/IdeaVaultTab.svelte'
   import CharacterMakerTab from './components/tabs/CharacterMakerTab.svelte'
   import NameTab from './components/tabs/NameTab.svelte'
+  import StoryDiagramTab from './components/tabs/StoryDiagramTab.svelte'
   import { appStore } from './lib/stores/appStore.svelte'
   import { projectStore } from './lib/stores/projectStore.svelte'
   import { runMigrationIfNeeded } from './lib/db/migration'
@@ -58,6 +59,8 @@
         <CharacterMakerTab />
       {:else if appStore.activeTab === 'name'}
         <NameTab />
+      {:else if appStore.activeTab === 'diagram'}
+        <StoryDiagramTab />
       {:else}
         <div class="empty">
           <div class="empty-icon">🚧</div>

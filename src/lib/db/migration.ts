@@ -53,9 +53,26 @@ function safeParseOldFormat(raw: string) {
 
 // ── メイン ────────────────────────────────────────────────────────────────
 
+async function cleanupIsekaiBigRiverIdeas(): Promise<void> {
+  const done = await db.meta.get('_cleanup_isekai_ideas_v1')
+  if (done) return
+  const KEEP = ['ストーリーライティング22の法則', 'オリジナル作品の作り方']
+  const projects = await db.projects.toArray()
+  const project = projects.find(p => p.title === '異世界大河')
+  if (project) {
+    const ideas = await db.ideas.where('linkedProjectId').equals(project.id).toArray()
+    const toDelete = ideas.filter(i => !KEEP.includes(i.title ?? ''))
+    await db.ideas.bulkDelete(toDelete.map(i => i.id))
+  }
+  await db.meta.put({ key: '_cleanup_isekai_ideas_v1', value: true })
+}
+
 export async function runMigrationIfNeeded(): Promise<void> {
   const done = await db.meta.get('_migrated')
-  if (done) return
+  if (done) {
+    await cleanupIsekaiBigRiverIdeas()
+    return
+  }
 
   const raw = localStorage.getItem('storyforge_v2')
   if (!raw) {

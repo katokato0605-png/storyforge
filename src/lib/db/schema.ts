@@ -37,6 +37,8 @@ export interface Idea {
   tags: string[]
   linkedProjectId: string | null
   createdAt: number
+  isTrash?: boolean
+  deletedAt?: number
 }
 
 export type LoreType = 'character' | 'world' | 'lore'

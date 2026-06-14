@@ -2,8 +2,18 @@ import { db } from '../db/database'
 import type { Idea } from '../db/schema'
 import { nanoid } from 'nanoid'
 
+const TRASH_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 1週間
+
 let ideas = $state<Idea[]>([])
 let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+async function purgeExpiredTrash() {
+  const cutoff = Date.now() - TRASH_TTL_MS
+  const expired = await db.ideas.filter(i => !!i.isTrash && (i.deletedAt ?? 0) < cutoff).toArray()
+  if (expired.length > 0) {
+    await db.ideas.bulkDelete(expired.map(i => i.id))
+  }
+}
 
 export const ideaStore = {
   get ideas() { return ideas },
@@ -13,6 +23,7 @@ export const ideaStore = {
     if (status === 'ready' || status === 'loading') return
     status = 'loading'
     try {
+      await purgeExpiredTrash()
       ideas = await db.ideas.orderBy('createdAt').reverse().toArray()
       status = 'ready'
     } catch {
@@ -32,6 +43,17 @@ export const ideaStore = {
     ideas = ideas.map(i => i.id === id ? { ...i, ...patch } : i)
   },
 
+  async trash(id: string) {
+    const deletedAt = Date.now()
+    await db.ideas.update(id, { isTrash: true, deletedAt })
+    ideas = ideas.map(i => i.id === id ? { ...i, isTrash: true, deletedAt } : i)
+  },
+
+  async restore(id: string) {
+    await db.ideas.update(id, { isTrash: false, deletedAt: undefined })
+    ideas = ideas.map(i => i.id === id ? { ...i, isTrash: false, deletedAt: undefined } : i)
+  },
+
   async delete(id: string) {
     await db.ideas.delete(id)
     ideas = ideas.filter(i => i.id !== id)
@@ -40,6 +62,7 @@ export const ideaStore = {
   async reload() {
     status = 'loading'
     try {
+      await purgeExpiredTrash()
       ideas = await db.ideas.orderBy('createdAt').reverse().toArray()
       status = 'ready'
     } catch {

@@ -42,6 +42,15 @@ class StoryForgeDB extends Dexie {
         if (idea.title === undefined) idea.title = ''
       })
     })
+    this.version(4).stores({
+      projects:     'id, updatedAt',
+      chapters:     'id, projectId, order, updatedAt',
+      projectNotes: 'id, projectId, type, updatedAt',
+      ideas:        'id, *tags, linkedProjectId, createdAt, isTrash',
+      loreEntries:  'id, projectId, type, *tags, createdAt',
+      backups:      'id, generation, createdAt',
+      meta:         'key',
+    })
   }
 }
 

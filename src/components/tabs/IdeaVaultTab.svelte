@@ -724,6 +724,7 @@
   const filtered = $derived.by(() => {
     const pid = projectStore.currentProjectId
     const base = ideaStore.ideas.filter(i => {
+      if (i.isTrash) return false
       if (pid) {
         if (i.linkedProjectId !== pid) return false
       } else {
@@ -743,7 +744,7 @@
     })
   })
 
-  const allTags = $derived([...new Set(ideaStore.ideas.flatMap(i => i.tags))].sort())
+  const allTags = $derived([...new Set(ideaStore.ideas.filter(i => !i.isTrash).flatMap(i => i.tags))].sort())
 
   async function addIdea() {
     if (!newTitle.trim() && !newContent.trim()) return
@@ -764,10 +765,10 @@
 
   function confirmDelete(id: string) {
     appStore.openModal('confirm', {
-      title: 'アイデアを削除',
-      message: 'このアイデアを削除します。',
-      danger: true,
-      onConfirm: () => ideaStore.delete(id),
+      title: 'ゴミ箱に移動',
+      message: 'このアイデアをゴミ箱に移動します。1週間後に自動削除されます。',
+      danger: false,
+      onConfirm: () => ideaStore.trash(id),
     })
   }
 
@@ -1002,5 +1003,6 @@
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }
   .tmpl-item   { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text); font-family: inherit }
   .tmpl-item:hover { background: var(--surface2) }
+
 </style>
 

@@ -1,15 +1,19 @@
 <script lang="ts">
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
+  import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import IdeaVaultTab from '../tabs/IdeaVaultTab.svelte'
   import type { Project } from '../../lib/db/schema'
+  import { onMount } from 'svelte'
 
-  let homeSection = $state<'projects' | 'ideas'>('projects')
+  let homeSection = $state<'projects' | 'ideas' | 'trash'>('projects')
 
   let showForm = $state(false)
   let editTarget = $state<Project | null>(null)
   let formTitle = $state('')
   let formDesc = $state('')
+
+  onMount(() => ideaStore.load())
 
   function openCreate() {
     editTarget = null
@@ -50,6 +54,28 @@
   function formatDate(ts: number) {
     return new Date(ts).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
   }
+
+  const trashed = $derived(ideaStore.ideas.filter(i => i.isTrash))
+
+  function formatDeletedAt(ts: number | undefined) {
+    if (!ts) return ''
+    const expiry = ts + 7 * 24 * 60 * 60 * 1000
+    const diff = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24))
+    return diff <= 0 ? '間もなく削除' : `あと${diff}日`
+  }
+
+  function restoreIdea(id: string) {
+    ideaStore.restore(id)
+  }
+
+  function confirmPermanentDelete(id: string) {
+    appStore.openModal('confirm', {
+      title: '完全削除',
+      message: 'このアイデアを完全に削除します。元に戻せません。',
+      danger: true,
+      onConfirm: () => ideaStore.delete(id),
+    })
+  }
 </script>
 
 <div class="hv-root">
@@ -59,6 +85,9 @@
     </button>
     <button class="hv-tab" class:active={homeSection === 'ideas'} onclick={() => homeSection = 'ideas'}>
       💡 アイデア保管庫
+    </button>
+    <button class="hv-tab" class:active={homeSection === 'trash'} onclick={() => homeSection = 'trash'}>
+      🗑 ゴミ箱{trashed.length > 0 ? ` (${trashed.length})` : ''}
     </button>
   </div>
 
@@ -92,9 +121,39 @@
         </div>
       {/if}
     </div>
-  {:else}
+  {:else if homeSection === 'ideas'}
     <div class="ideas-section">
       <IdeaVaultTab />
+    </div>
+  {:else}
+    <div class="trash-section">
+      {#if trashed.length === 0}
+        <div class="empty" style="margin-top:60px">
+          <div class="empty-icon">🗑</div>
+          <div class="empty-msg">ゴミ箱は空です</div>
+          <div class="empty-sub">削除したアイデアは1週間保存されます</div>
+        </div>
+      {:else}
+        <div class="trash-list">
+          {#each trashed as idea (idea.id)}
+            <div class="trash-card">
+              <div class="trash-body">
+                {#if idea.title}
+                  <div class="trash-title">{idea.title}</div>
+                {/if}
+                {#if idea.content}
+                  <p class="trash-text">{idea.content}</p>
+                {/if}
+                <div class="trash-meta">{formatDeletedAt(idea.deletedAt)}</div>
+              </div>
+              <div class="trash-actions">
+                <button class="btn btn-ghost btn-sm" onclick={() => restoreIdea(idea.id)}>↩ 復元</button>
+                <button class="btn btn-danger btn-sm" onclick={() => confirmPermanentDelete(idea.id)}>完全削除</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -134,6 +193,7 @@
 
   .projects-section{padding-top:20px;overflow-y:auto;flex:1}
   .ideas-section{flex:1;overflow:hidden;margin-top:16px}
+  .trash-section{flex:1;overflow-y:auto;padding-top:16px}
 
   .sec-head{display:flex;align-items:center;justify-content:flex-end;margin-bottom:16px}
   .works-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
@@ -145,9 +205,18 @@
   .wcard-acts{position:absolute;top:10px;right:10px;display:none;gap:4px}
   .wcard:hover .wcard-acts{display:flex}
 
+  .trash-list{display:flex;flex-direction:column;gap:10px}
+  .trash-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px}
+  .trash-body{flex:1;min-width:0}
+  .trash-title{font-size:14px;font-weight:700;margin-bottom:4px;color:var(--text)}
+  .trash-text{font-size:13px;line-height:1.6;color:var(--muted);white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px}
+  .trash-meta{font-size:11px;color:var(--muted)}
+  .trash-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+  .btn-danger{background:color-mix(in srgb,#e53e3e 15%,transparent);color:#e53e3e;border:1px solid color-mix(in srgb,#e53e3e 30%,transparent)}
+  .btn-danger:hover{background:color-mix(in srgb,#e53e3e 25%,transparent)}
+
   .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:13px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto}
   .modal-title{font-size:16px;font-weight:700;margin-bottom:14px}
   .modal-acts{display:flex;gap:7px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
-
 </style>

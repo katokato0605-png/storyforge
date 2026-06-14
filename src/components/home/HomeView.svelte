@@ -185,15 +185,15 @@
 {/if}
 
 <style>
-  .hv-root{display:flex;flex-direction:column;height:100%}
+  .hv-root{display:flex;flex-direction:column;height:100%;width:100%;min-width:0}
   .hv-tabs{display:flex;gap:4px;padding:0 0 16px 0;border-bottom:1px solid var(--border);flex-shrink:0}
   .hv-tab{background:none;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:.15s;font-family:inherit}
   .hv-tab:hover{color:var(--text);background:var(--surface2)}
   .hv-tab.active{color:var(--accent);background:var(--surface2)}
 
-  .projects-section{padding-top:20px;overflow-y:auto;flex:1}
-  .ideas-section{flex:1;overflow:hidden;margin-top:16px}
-  .trash-section{flex:1;overflow-y:auto;padding-top:16px}
+  .projects-section{padding-top:20px;overflow-y:auto;flex:1;width:100%;min-width:0}
+  .ideas-section{flex:1;overflow:hidden;margin-top:16px;width:100%;min-width:0}
+  .trash-section{flex:1;overflow-y:auto;padding-top:16px;width:100%;min-width:0}
 
   .sec-head{display:flex;align-items:center;justify-content:flex-end;margin-bottom:16px}
   .works-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}

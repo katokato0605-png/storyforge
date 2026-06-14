@@ -9,7 +9,7 @@ let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
 async function purgeExpiredTrash() {
   const cutoff = Date.now() - TRASH_TTL_MS
-  const expired = await db.ideas.filter(i => !!i.isTrash && (i.deletedAt ?? 0) < cutoff).toArray()
+  const expired = await db.ideas.where('isTrash').equals(1).filter(i => (i.deletedAt ?? 0) < cutoff).toArray()
   if (expired.length > 0) {
     await db.ideas.bulkDelete(expired.map(i => i.id))
   }
@@ -50,7 +50,7 @@ export const ideaStore = {
   },
 
   async restore(id: string) {
-    await db.ideas.update(id, { isTrash: false, deletedAt: undefined })
+    await db.ideas.where('id').equals(id).modify(i => { i.isTrash = false; delete i.deletedAt })
     ideas = ideas.map(i => i.id === id ? { ...i, isTrash: false, deletedAt: undefined } : i)
   },
 

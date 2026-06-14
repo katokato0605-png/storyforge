@@ -56,8 +56,9 @@ export const chapterStore = {
   },
 
   async updateStatus(id: string, s: ChapterStatus) {
-    await db.chapters.update(id, { status: s, updatedAt: Date.now() })
-    chapters = chapters.map(c => c.id === id ? { ...c, status: s } : c)
+    const updatedAt = Date.now()
+    await db.chapters.update(id, { status: s, updatedAt })
+    chapters = chapters.map(c => c.id === id ? { ...c, status: s, updatedAt } : c)
   },
 
   async saveContent(id: string, content: string) {

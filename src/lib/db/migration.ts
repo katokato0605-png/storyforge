@@ -148,6 +148,7 @@ export async function runMigrationIfNeeded(): Promise<void> {
 
   const ideas: Idea[] = (parsed.ideas ?? []).map((idea) => ({
     id:              idea.id ?? nanoid(),
+    title:           '',
     content:         idea.content ?? '',
     tags:            idea.tags ?? [],
     linkedProjectId: idea.linkedProjectId ?? null,

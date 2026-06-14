@@ -55,6 +55,7 @@ export const appStore = {
   setTheme(t: Theme) {
     theme = t
     document.documentElement.setAttribute('data-theme', t)
+    localStorage.setItem('sf_theme', t)
   },
   openModal(name: string, props?: unknown) {
     activeModal = name

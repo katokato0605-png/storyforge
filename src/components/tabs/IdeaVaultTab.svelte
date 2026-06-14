@@ -702,8 +702,8 @@
     if (!editId) return
     const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
-    const linkedProjectId = matchedProject ? matchedProject.id : undefined
-    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, ...(linkedProjectId !== undefined ? { linkedProjectId } : {}) })
+    const linkedProjectId = matchedProject?.id ?? null
+    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, linkedProjectId })
     editId = null
   }
 

@@ -719,7 +719,7 @@
     showTemplateMenu = false
   }
 
-  onMount(() => ideaStore.load())
+  onMount(() => { if (!projectStore.currentProjectId) return; ideaStore.load() })
 
   const filtered = $derived.by(() => {
     const pid = projectStore.currentProjectId
@@ -772,9 +772,13 @@
     })
   }
 
-  function linkToggle(id: string, linked: boolean) {
-    const pid = projectStore.currentProjectId ?? null
-    ideaStore.update(id, { linkedProjectId: linked ? null : pid })
+  function linkToggle(_id: string, linked: boolean) {
+    const currentProject = projectStore.projects.find(p => p.id === projectStore.currentProjectId)
+    if (!currentProject) return
+    const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    editTags = linked
+      ? tags.filter(t => t !== currentProject.title).join(', ')
+      : [...tags, currentProject.title].join(', ')
   }
 
   function getTagProject(tag: string) {
@@ -954,7 +958,8 @@
           aria-label="タグ"
         />
         {#if projectStore.currentProjectId}
-          {@const linked = ideaStore.ideas.find(i => i.id === editId)?.linkedProjectId === projectStore.currentProjectId}
+          {@const currentProject = projectStore.projects.find(p => p.id === projectStore.currentProjectId)}
+          {@const linked = !!currentProject && editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean).includes(currentProject.title)}
           <button class="btn btn-ghost btn-sm" onclick={() => linkToggle(editId!, linked)} title={linked ? 'リンク解除' : 'この作品にリンク'}>
             🔗 {linked ? 'リンク済み' : 'リンク'}
           </button>

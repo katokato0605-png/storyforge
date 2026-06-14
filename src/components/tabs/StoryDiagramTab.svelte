@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { loreStore } from '../../lib/stores/loreStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
 
@@ -72,32 +72,33 @@
     const pid = projectStore.currentProjectId
     if (!pid) return
     const chars = loreStore.entries.filter(e => e.type === 'character' && e.projectId === pid)
-    const existing = new Set(nodes.map(n => n.id))
-    let changed = false
-    let cx = 80
-    for (const ch of chars) {
-      if (!existing.has(ch.id)) {
-        nodes = [...nodes, {
-          id: ch.id,
-          label: ch.title,
-          x: cx,
-          y: 80,
-          color: COLORS[nodes.length % COLORS.length],
-          custom: false,
-        }]
-        cx += NODE_W + 40
-        changed = true
+    untrack(() => {
+      const existing = new Set(nodes.map(n => n.id))
+      let changed = false
+      let cx = 80
+      for (const ch of chars) {
+        if (!existing.has(ch.id)) {
+          nodes = [...nodes, {
+            id: ch.id,
+            label: ch.title,
+            x: cx,
+            y: 80,
+            color: COLORS[nodes.length % COLORS.length],
+            custom: false,
+          }]
+          cx += NODE_W + 40
+          changed = true
+        }
       }
-    }
-    // update labels for existing lore nodes
-    for (const ch of chars) {
-      const n = nodes.find(n => n.id === ch.id)
-      if (n && n.label !== ch.title) {
-        nodes = nodes.map(nd => nd.id === ch.id ? { ...nd, label: ch.title } : nd)
-        changed = true
+      for (const ch of chars) {
+        const n = nodes.find(n => n.id === ch.id)
+        if (n && n.label !== ch.title) {
+          nodes = nodes.map(nd => nd.id === ch.id ? { ...nd, label: ch.title } : nd)
+          changed = true
+        }
       }
-    }
-    if (changed) saveNodes()
+      if (changed) saveNodes()
+    })
   }
 
   onMount(async () => {

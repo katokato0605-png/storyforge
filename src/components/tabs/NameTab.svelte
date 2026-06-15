@@ -51,48 +51,83 @@
     beats: ChapterBeat[]
   }
 
-  interface NameData {
+  interface NameDataV1 {
     version: 1
     episodes: Episode[]
     chapters: Chapter[]
   }
 
+  interface NameData {
+    version: 2
+    episodes: Episode[]
+    structureChapters: Record<string, Chapter[]>
+  }
+
+  // ---- Structure tabs ----
+  const STRUCTURE_TABS = [
+    { key: 'free',          label: '自由' },
+    { key: 'three_act',     label: '三幕構成' },
+    { key: 'heros_journey', label: 'ヒーローズジャーニー' },
+    { key: 'kishoten',      label: '起承転結' },
+    { key: 'johakyuu',      label: '序破急' },
+  ] as const
+
+  type StructureKey = typeof STRUCTURE_TABS[number]['key']
+
   // ---- Templates ----
-  const CHAPTER_TEMPLATES = {
+  const CHAPTER_TEMPLATES: Record<string, { label: string; beats: { stage: string; title: string; hint: string }[] }> = {
     three_act: {
       label: '三幕構成（8ビート）',
       beats: [
-        { stage: '第一幕', title: '日常世界',      hint: '主人公の普段の生活・性格・欲求を描く。' },
-        { stage: '第一幕', title: 'きっかけ',      hint: '主人公の日常を揺るがす出来事が起きる。' },
-        { stage: '第一幕', title: '決意',          hint: '主人公が「行動する」と決める瞬間。' },
-        { stage: '第二幕', title: '新世界へ',      hint: '主人公が未知の環境・状況に飛び込む。' },
-        { stage: '第二幕', title: '中間転換点',    hint: '物語の折り返し地点。' },
-        { stage: '第二幕', title: '最大の危機',    hint: '主人公がどん底に落ちる瞬間。' },
+        { stage: '第一幕', title: '日常世界',       hint: '主人公の普段の生活・性格・欲求を描く。' },
+        { stage: '第一幕', title: 'きっかけ',       hint: '主人公の日常を揺るがす出来事が起きる。' },
+        { stage: '第一幕', title: '決意',           hint: '主人公が「行動する」と決める瞬間。' },
+        { stage: '第二幕', title: '新世界へ',       hint: '主人公が未知の環境・状況に飛び込む。' },
+        { stage: '第二幕', title: '中間転換点',     hint: '物語の折り返し地点。' },
+        { stage: '第二幕', title: '最大の危機',     hint: '主人公がどん底に落ちる瞬間。' },
         { stage: '第三幕', title: 'クライマックス', hint: '物語の頂点。' },
-        { stage: '第三幕', title: '解決',          hint: '戦いの後の世界を描く。' },
+        { stage: '第三幕', title: '解決',           hint: '戦いの後の世界を描く。' },
       ],
     },
     heros_journey: {
       label: 'ヒーローズジャーニー（12段階）',
       beats: [
-        { stage: '出発',           title: '日常世界',       hint: '冒険前の主人公の普通の生活。' },
-        { stage: '出発',           title: '冒険への召喚',   hint: '主人公に使命・問題・誘いが訪れる。' },
-        { stage: '出発',           title: '召喚の拒否',     hint: '主人公が恐れや義務感から冒険を断る。' },
-        { stage: '出発',           title: '師との出会い',   hint: '主人公を導く存在が現れ、旅への準備が整う。' },
-        { stage: '出発',           title: '第一関門突破',   hint: '日常世界を離れ、未知の領域に踏み込む。' },
+        { stage: '出発',            title: '日常世界',         hint: '冒険前の主人公の普通の生活。' },
+        { stage: '出発',            title: '冒険への召喚',     hint: '主人公に使命・問題・誘いが訪れる。' },
+        { stage: '出発',            title: '召喚の拒否',       hint: '主人公が恐れや義務感から冒険を断る。' },
+        { stage: '出発',            title: '師との出会い',     hint: '主人公を導く存在が現れ、旅への準備が整う。' },
+        { stage: '出発',            title: '第一関門突破',     hint: '日常世界を離れ、未知の領域に踏み込む。' },
         { stage: 'イニシエーション', title: 'テスト・仲間・敵', hint: '新しい世界でのルールを学ぶ。' },
-        { stage: 'イニシエーション', title: '最深部への接近', hint: '最大の試練が待つ場所へ近づく。' },
-        { stage: 'イニシエーション', title: '最大の試練',   hint: '主人公が「死」に最も近づく瞬間。' },
-        { stage: 'イニシエーション', title: '報酬',         hint: '試練を乗り越えた主人公が宝を手に入れる。' },
-        { stage: '帰還',           title: '帰路',           hint: '宝を持って日常世界に戻ろうとする。' },
-        { stage: '帰還',           title: '復活',           hint: '最後の浄化・試練。' },
-        { stage: '帰還',           title: '宝を持っての帰還', hint: '変容した主人公が日常世界に戻る。' },
+        { stage: 'イニシエーション', title: '最深部への接近',  hint: '最大の試練が待つ場所へ近づく。' },
+        { stage: 'イニシエーション', title: '最大の試練',      hint: '主人公が「死」に最も近づく瞬間。' },
+        { stage: 'イニシエーション', title: '報酬',            hint: '試練を乗り越えた主人公が宝を手に入れる。' },
+        { stage: '帰還',            title: '帰路',             hint: '宝を持って日常世界に戻ろうとする。' },
+        { stage: '帰還',            title: '復活',             hint: '最後の浄化・試練。' },
+        { stage: '帰還',            title: '宝を持っての帰還', hint: '変容した主人公が日常世界に戻る。' },
       ],
     },
-  } as const
+    kishoten: {
+      label: '起承転結（4ビート）',
+      beats: [
+        { stage: '起', title: '導入',   hint: '物語の世界観・登場人物・状況を提示する。' },
+        { stage: '承', title: '展開',   hint: '事件や問題が発生し、物語が動き出す。' },
+        { stage: '転', title: '転換',   hint: '予想外の展開や逆転が起きる。' },
+        { stage: '結', title: 'まとめ', hint: '物語が締めくくられ、結末を迎える。' },
+      ],
+    },
+    johakyuu: {
+      label: '序破急（3ビート）',
+      beats: [
+        { stage: '序', title: '序',   hint: 'ゆっくりとした導入。世界と人物を丁寧に描く。' },
+        { stage: '破', title: '破',   hint: '変化と発展。展開が加速し、葛藤が深まる。' },
+        { stage: '急', title: '急',   hint: '急激な加速とクライマックス。一気に結末へ。' },
+      ],
+    },
+  }
 
   // ---- State ----
   let subTab = $state<'episode' | 'chapter' | 'idea'>('chapter')
+  let structureKey = $state<StructureKey>('free')
 
   // Idea sub-tab
   const SCENE_TAG = '書きたいシーン'
@@ -135,14 +170,32 @@
   let episodes = $state<Episode[]>([])
   let selectedEpisodeId = $state<string | null>(null)
   let sceneEditId = $state<string | null>(null)
-  let showGroupColors = $state(false)
 
   // Chapter sub-tab
-  let chapters = $state<Chapter[]>([])
+  let structureChapters = $state<Record<string, Chapter[]>>({})
+  // selectedChapterId per structure key
+  let selectedChapterIds: Record<string, string | null> = {}
   let selectedChapterId = $state<string | null>(null)
   let showTmplMenu = $state(false)
   let beatEditId = $state<string | null>(null)
   const chapterHist = createHistory<Chapter[]>()
+
+  const chapters = $derived(structureChapters[structureKey] ?? [])
+  const allChapters = $derived(Object.values(structureChapters).flat())
+
+  function setChapters(key: string, newChaps: Chapter[]) {
+    structureChapters = { ...structureChapters, [key]: newChaps }
+  }
+
+  function switchStructure(key: StructureKey) {
+    // save current selection
+    selectedChapterIds[structureKey] = selectedChapterId
+    structureKey = key
+    // restore saved selection, or default to first chapter
+    const saved = selectedChapterIds[key]
+    const chs = structureChapters[key] ?? []
+    selectedChapterId = saved !== undefined ? saved : (chs[0]?.id ?? null)
+  }
 
   // Persistence
   let saveTimer: ReturnType<typeof setTimeout>
@@ -158,21 +211,31 @@
     loaded = false
     if (!key) return
     let eps: Episode[] = []
-    let chs: Chapter[] = []
+    let strChaps: Record<string, Chapter[]> = {}
     try {
       const raw = localStorage.getItem(key)
       if (raw) {
-        const parsed: NameData = JSON.parse(raw)
-        eps = parsed.episodes ?? []
-        chs = parsed.chapters ?? []
+        const parsed = JSON.parse(raw)
+        if (parsed.version === 2) {
+          const data = parsed as NameData
+          eps = data.episodes ?? []
+          strChaps = data.structureChapters ?? {}
+        } else {
+          // v1 → v2 migration
+          const data = parsed as NameDataV1
+          eps = data.episodes ?? []
+          strChaps = { free: data.chapters ?? [] }
+        }
       }
     } catch {
-      // keep empty arrays
+      // keep empty
     }
     episodes = eps
-    chapters = chs
+    structureChapters = strChaps
     selectedEpisodeId = eps[0]?.id ?? null
-    selectedChapterId = chs[0]?.id ?? null
+    selectedChapterIds = {}
+    structureKey = 'free'
+    selectedChapterId = (strChaps['free'] ?? [])[0]?.id ?? null
     loaded = true
   })
 
@@ -181,7 +244,7 @@
     if (!key) return
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
-      const data: NameData = { version: 1, episodes, chapters }
+      const data: NameData = { version: 2, episodes, structureChapters }
       localStorage.setItem(key, JSON.stringify(data))
     }, 300)
   }
@@ -263,62 +326,65 @@
     const ch: Chapter = {
       id: nanoid(), title: '', theme: '', stateStart: '', stateEnd: '', beats: [],
     }
-    chapters = [...chapters, ch]
+    const next = [...chapters, ch]
+    setChapters(structureKey, next)
     selectedChapterId = ch.id
     save()
   }
 
   function deleteChapter(id: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.filter(c => c.id !== id)
-    if (selectedChapterId === id) selectedChapterId = chapters[0]?.id ?? null
+    const next = chapters.filter(c => c.id !== id)
+    setChapters(structureKey, next)
+    if (selectedChapterId === id) selectedChapterId = next[0]?.id ?? null
     save()
   }
 
   function updateChapter(id: string, patch: Partial<Omit<Chapter, 'beats'>>) {
-    chapters = chapters.map(c => c.id === id ? { ...c, ...patch } : c)
+    setChapters(structureKey, chapters.map(c => c.id === id ? { ...c, ...patch } : c))
     save()
   }
 
-  function applyTemplate(key: keyof typeof CHAPTER_TEMPLATES, targetChapterId?: string) {
+  function applyTemplate(key: string, targetChapterId?: string) {
     showTmplMenu = false
+    const tmpl = CHAPTER_TEMPLATES[key]
+    if (!tmpl) return
     const chId = targetChapterId ?? selectedChapterId
     if (!chId) return
     const ch = chapters.find(c => c.id === chId)
     if (!ch) return
+    const doApply = () => {
+      chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+      const newBeats: ChapterBeat[] = tmpl.beats.map(b => ({
+        id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
+      }))
+      setChapters(structureKey, chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c))
+      save()
+    }
     if (ch.beats.length > 0) {
       appStore.openModal('confirm', {
         title: 'テンプレート適用',
         message: '既存のビートをテンプレートで上書きしますか？',
         danger: true,
-        onConfirm: () => {
-          chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-          const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
-            id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
-          }))
-          chapters = chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c)
-          save()
-        },
+        onConfirm: doApply,
       })
       return
     }
-    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
-      id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
-    }))
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c)
-    save()
+    doApply()
   }
 
-  function applyTemplateNewChapter(key: keyof typeof CHAPTER_TEMPLATES) {
+  function applyTemplateNewChapter(templateKey: string) {
+    const tmpl = CHAPTER_TEMPLATES[templateKey]
+    if (!tmpl) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
+    const newBeats: ChapterBeat[] = tmpl.beats.map(b => ({
       id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
     }))
     const ch: Chapter = {
-      id: nanoid(), title: CHAPTER_TEMPLATES[key].label, theme: '', stateStart: '', stateEnd: '', beats: newBeats,
+      id: nanoid(), title: tmpl.label, theme: '', stateStart: '', stateEnd: '', beats: newBeats,
     }
-    chapters = [...chapters, ch]
+    const next = [...chapters, ch]
+    setChapters(structureKey, next)
     selectedChapterId = ch.id
     save()
   }
@@ -326,26 +392,26 @@
   function addBeat(chId: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const beat: ChapterBeat = { id: nanoid(), stage: '', title: '', memo: '' }
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: [...c.beats, beat] } : c)
+    setChapters(structureKey, chapters.map(c => c.id === chId ? { ...c, beats: [...c.beats, beat] } : c))
     beatEditId = beat.id
     save()
   }
 
   function deleteBeat(chId: string, beatId: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.map(c => c.id === chId
+    setChapters(structureKey, chapters.map(c => c.id === chId
       ? { ...c, beats: c.beats.filter(b => b.id !== beatId) }
       : c
-    )
+    ))
     if (beatEditId === beatId) beatEditId = null
     save()
   }
 
   function updateBeat(chId: string, beatId: string, patch: Partial<ChapterBeat>) {
-    chapters = chapters.map(c => c.id === chId
+    setChapters(structureKey, chapters.map(c => c.id === chId
       ? { ...c, beats: c.beats.map(b => b.id === beatId ? { ...b, ...patch } : b) }
       : c
-    )
+    ))
     save()
   }
 
@@ -355,7 +421,7 @@
     const next = beatDs.drop(ch.beats, toIdx)
     if (!next) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: next } : c)
+    setChapters(structureKey, chapters.map(c => c.id === chId ? { ...c, beats: next } : c))
     save()
   }
 
@@ -371,7 +437,7 @@
     const next = chDs.drop(chapters, toIdx)
     if (!next) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = next
+    setChapters(structureKey, next)
     if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
     save()
   }
@@ -380,7 +446,7 @@
   function chapterUndo() {
     const prev = chapterHist.undo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     if (!prev) return
-    chapters = prev
+    setChapters(structureKey, prev)
     if (!prev.find(c => c.id === selectedChapterId)) selectedChapterId = prev[0]?.id ?? null
     save()
   }
@@ -388,7 +454,7 @@
   function chapterRedo() {
     const next = chapterHist.redo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     if (!next) return
-    chapters = next
+    setChapters(structureKey, next)
     if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
     save()
   }
@@ -404,6 +470,10 @@
     document.addEventListener('keydown', handleKeydown)
     return () => document.removeEventListener('keydown', handleKeydown)
   })
+
+  // ---- Structure tab default template ----
+  // When switching to a non-free structure with no chapters, offer to apply template
+  const structureHasTemplate = $derived(structureKey !== 'free' && structureKey in CHAPTER_TEMPLATES)
 
   onMount(() => ideaStore.load())
 </script>
@@ -446,8 +516,7 @@
               <div class="nt-empty-hint">話を追加してください</div>
             {:else}
               {#each episodes as ep, idx (ep.id)}
-                {@const linkedCh = ep.chapterId ? chapters.find(c => c.id === ep.chapterId) ?? null : null}
-                {@const linkedChIdx = linkedCh ? chapters.indexOf(linkedCh) : -1}
+                {@const linkedCh = ep.chapterId ? allChapters.find(c => c.id === ep.chapterId) ?? null : null}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                   class="nt-list-drag-row"
@@ -475,7 +544,7 @@
                     <span class="nt-ep-num">{ep.number}話</span>
                     <span class="nt-ep-title">{ep.title || '（無題）'}</span>
                     {#if linkedCh}
-                      <span class="nt-ch-tag">{linkedChIdx + 1}章</span>
+                      <span class="nt-ch-tag">{linkedCh.title || '章'}</span>
                     {:else if ep.groupName}
                       <span class="nt-ch-tag">{ep.groupName}</span>
                     {/if}
@@ -509,15 +578,21 @@
                   value={selectedEpisode.chapterId ?? ''}
                   onchange={(e) => {
                     const chId = (e.target as HTMLSelectElement).value || null
-                    const ch = chId ? chapters.find(c => c.id === chId) : null
-                    const idx = ch ? chapters.indexOf(ch) : -1
-                    const label = ch ? `${idx + 1}章${ch.title ? ` ${ch.title}` : ''}` : ''
+                    const ch = chId ? allChapters.find(c => c.id === chId) : null
+                    const label = ch ? (ch.title || '章') : ''
                     updateEpisode(selectedEpisode!.id, { chapterId: chId, groupName: label })
                   }}
                 >
                   <option value="">（章なし）</option>
-                  {#each chapters as ch, idx (ch.id)}
-                    <option value={ch.id}>{idx + 1}章{ch.title ? ` — ${ch.title}` : ''}</option>
+                  {#each STRUCTURE_TABS as stab}
+                    {@const strChs = structureChapters[stab.key] ?? []}
+                    {#if strChs.length > 0}
+                      <optgroup label={stab.label}>
+                        {#each strChs as ch (ch.id)}
+                          <option value={ch.id}>{ch.title || '（無題）'}</option>
+                        {/each}
+                      </optgroup>
+                    {/if}
                   {/each}
                 </select>
                 <div class="nt-color-row">
@@ -630,6 +705,16 @@
 
     <!-- ============ 章サブタブ ============ -->
     {:else if subTab === 'chapter'}
+      <!-- Structure tab bar -->
+      <div class="nt-structure-bar">
+        {#each STRUCTURE_TABS as stab}
+          <button
+            class="nt-str-tab"
+            class:active={structureKey === stab.key}
+            onclick={() => switchStructure(stab.key)}
+          >{stab.label}</button>
+        {/each}
+      </div>
       <div class="nt-body">
         <!-- Left: chapter list -->
         <div class="nt-left">
@@ -717,7 +802,7 @@
                     <div class="nt-tmpl-bg" onclick={() => showTmplMenu = false}></div>
                     <div class="nt-tmpl-menu">
                       {#each Object.entries(CHAPTER_TEMPLATES) as [key, tmpl]}
-                        <button class="nt-tmpl-item" onclick={() => applyTemplate(key as keyof typeof CHAPTER_TEMPLATES)}>{tmpl.label}</button>
+                        <button class="nt-tmpl-item" onclick={() => applyTemplate(key)}>{tmpl.label}</button>
                       {/each}
                     </div>
                   {/if}
@@ -798,8 +883,14 @@
               <div class="nt-ch-empty-msg">章がまだありません</div>
               <div class="nt-ch-empty-actions">
                 <button class="btn btn-primary btn-sm" onclick={addChapter}>＋ 章を追加</button>
-                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('three_act')}>三幕構成で始める</button>
-                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('heros_journey')}>ヒーローズジャーニーで始める</button>
+                {#if structureHasTemplate}
+                  <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter(structureKey)}>
+                    {CHAPTER_TEMPLATES[structureKey].label}で始める
+                  </button>
+                {:else}
+                  <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('three_act')}>三幕構成で始める</button>
+                  <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('heros_journey')}>ヒーローズジャーニーで始める</button>
+                {/if}
               </div>
             </div>
           {/if}
@@ -918,6 +1009,23 @@
   }
   .nt-stab:hover { color: var(--text); background: var(--surface2) }
   .nt-stab.active { background: var(--accent); color: #fff; border-color: var(--accent) }
+
+  /* Structure tab bar */
+  .nt-structure-bar {
+    display: flex; gap: 0; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+  .nt-str-tab {
+    padding: 8px 16px; border: none; border-bottom: 2px solid transparent;
+    background: none; cursor: pointer; font-size: 12px; font-weight: 600;
+    color: var(--muted); font-family: inherit; transition: .1s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .nt-str-tab:hover { color: var(--text) }
+  .nt-str-tab.active { color: var(--accent); border-bottom-color: var(--accent) }
 
   /* Body layout */
   .nt-body {
@@ -1109,5 +1217,7 @@
   @media (max-width: 640px) {
     .nt-left { width: 120px; min-width: 100px }
     .nt-right-header { flex-direction: column }
+    .nt-structure-bar { padding: 0 8px }
+    .nt-str-tab { padding: 8px 10px; font-size: 11px }
   }
 </style>

@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte'
-  import { loreStore } from '../../lib/stores/loreStore.svelte'
+  import { onMount } from 'svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
 
   // ─── Types ───────────────────────────────────────────────────────────────────
@@ -10,8 +9,8 @@
     x: number
     y: number
     color: string
-    custom: boolean   // true = manually added node (not from lore)
-    imageUrl?: string // optional portrait
+    custom: boolean
+    imageUrl?: string
   }
 
   interface DiagramEdge {
@@ -21,15 +20,28 @@
     label: string
   }
 
+  interface DiagramDef {
+    id: string
+    name: string
+  }
+
   // ─── Constants ───────────────────────────────────────────────────────────────
   const NODE_W = 120
   const NODE_H = 52
   const COLORS = ['#5b8dee','#e8734a','#56b87c','#c46be3','#e8b84a','#4abce8','#e84a7a','#7ae84a']
 
-  // ─── State ───────────────────────────────────────────────────────────────────
+  // ─── Diagrams list state ──────────────────────────────────────────────────────
+  let diagrams = $state<DiagramDef[]>([])
+  let openDiagramId = $state<string | null>(null)
+  let addingDiagram = $state(false)
+  let newDiagramName = $state('')
+  let editDiagramId = $state<string | null>(null)
+  let editDiagramName = $state('')
+
+  // ─── Canvas state (for open diagram) ─────────────────────────────────────────
   let nodes = $state<DiagramNode[]>([])
   let edges = $state<DiagramEdge[]>([])
-  let connectFrom = $state<string | null>(null) // node id awaiting second click
+  let connectFrom = $state<string | null>(null)
   let editEdgeId = $state<string | null>(null)
   let editEdgeLabel = $state('')
   let draggingId = $state<string | null>(null)
@@ -40,87 +52,131 @@
   let editNodeId = $state<string | null>(null)
   let editNodeLabel = $state('')
   let showHelp = $state(false)
-  let fileInputId = ''
 
-  // ─── Persistence ─────────────────────────────────────────────────────────────
-  function storageKey(suffix: string) {
-    return `sf_diagram_${projectStore.currentProjectId}_${suffix}`
+  // ─── Persistence: diagrams list ───────────────────────────────────────────────
+  function diagramsKey() {
+    return `sf_diagrams_${projectStore.currentProjectId}`
+  }
+
+  function saveDiagrams() {
+    localStorage.setItem(diagramsKey(), JSON.stringify(diagrams))
+  }
+
+  function loadDiagrams() {
+    const pid = projectStore.currentProjectId
+    if (!pid) { diagrams = []; return }
+    try {
+      const raw = localStorage.getItem(diagramsKey())
+      if (raw) {
+        diagrams = JSON.parse(raw)
+      } else {
+        // migrate old single-diagram data if exists
+        const oldNodes = localStorage.getItem(`sf_diagram_${pid}_nodes`)
+        if (oldNodes) {
+          const defId = crypto.randomUUID()
+          diagrams = [{ id: defId, name: '構図 1' }]
+          localStorage.setItem(`sf_diagram_${pid}_${defId}_nodes`, oldNodes)
+          const oldEdges = localStorage.getItem(`sf_diagram_${pid}_edges`)
+          if (oldEdges) localStorage.setItem(`sf_diagram_${pid}_${defId}_edges`, oldEdges)
+        } else {
+          diagrams = []
+        }
+        saveDiagrams()
+      }
+    } catch {
+      diagrams = []
+    }
+  }
+
+  // ─── Persistence: canvas data ─────────────────────────────────────────────────
+  function nodeKey(diagId: string) {
+    return `sf_diagram_${projectStore.currentProjectId}_${diagId}_nodes`
+  }
+  function edgeKey(diagId: string) {
+    return `sf_diagram_${projectStore.currentProjectId}_${diagId}_edges`
   }
 
   function saveNodes() {
-    localStorage.setItem(storageKey('nodes'), JSON.stringify(nodes))
+    if (!openDiagramId) return
+    localStorage.setItem(nodeKey(openDiagramId), JSON.stringify(nodes))
   }
   function saveEdges() {
-    localStorage.setItem(storageKey('edges'), JSON.stringify(edges))
+    if (!openDiagramId) return
+    localStorage.setItem(edgeKey(openDiagramId), JSON.stringify(edges))
   }
 
-  function loadData() {
-    const pid = projectStore.currentProjectId
-    if (!pid) return
+  function loadCanvasData(diagId: string) {
     try {
-      const sn = localStorage.getItem(storageKey('nodes'))
-      const se = localStorage.getItem(storageKey('edges'))
+      const sn = localStorage.getItem(nodeKey(diagId))
+      const se = localStorage.getItem(edgeKey(diagId))
       nodes = sn ? JSON.parse(sn) : []
       edges = se ? JSON.parse(se) : []
     } catch {
       nodes = []; edges = []
     }
-    syncCharacters()
   }
 
-  function syncCharacters() {
-    const pid = projectStore.currentProjectId
-    if (!pid) return
-    const chars = loreStore.entries.filter(e => e.type === 'character' && e.projectId === pid)
-    untrack(() => {
-      const existing = new Set(nodes.map(n => n.id))
-      let changed = false
-      let cx = 80
-      for (const ch of chars) {
-        if (!existing.has(ch.id)) {
-          nodes = [...nodes, {
-            id: ch.id,
-            label: ch.title,
-            x: cx,
-            y: 80,
-            color: COLORS[nodes.length % COLORS.length],
-            custom: false,
-          }]
-          cx += NODE_W + 40
-          changed = true
-        }
-      }
-      for (const ch of chars) {
-        const n = nodes.find(n => n.id === ch.id)
-        if (n && n.label !== ch.title) {
-          nodes = nodes.map(nd => nd.id === ch.id ? { ...nd, label: ch.title } : nd)
-          changed = true
-        }
-      }
-      if (changed) saveNodes()
-    })
+  // ─── Diagram management ───────────────────────────────────────────────────────
+  function addDiagram() {
+    const name = newDiagramName.trim() || `構図 ${diagrams.length + 1}`
+    const d: DiagramDef = { id: crypto.randomUUID(), name }
+    diagrams = [...diagrams, d]
+    saveDiagrams()
+    newDiagramName = ''
+    addingDiagram = false
   }
 
-  onMount(async () => {
-    fileInputId = crypto.randomUUID()
+  function startEditDiagram(d: DiagramDef) {
+    editDiagramId = d.id
+    editDiagramName = d.name
+  }
+
+  function saveDiagramName() {
+    if (!editDiagramId || !editDiagramName.trim()) return
+    diagrams = diagrams.map(d => d.id === editDiagramId ? { ...d, name: editDiagramName.trim() } : d)
+    saveDiagrams()
+    editDiagramId = null
+  }
+
+  function deleteDiagram(id: string) {
     const pid = projectStore.currentProjectId
-    if (pid) await loreStore.load(pid)
-    loadData()
+    diagrams = diagrams.filter(d => d.id !== id)
+    saveDiagrams()
+    if (pid) {
+      localStorage.removeItem(nodeKey(id))
+      localStorage.removeItem(edgeKey(id))
+    }
+    if (openDiagramId === id) closeDiagram()
+    editDiagramId = null
+  }
+
+  function openDiagram(id: string) {
+    openDiagramId = id
+    connectFrom = null
+    addingCustom = false
+    showHelp = false
+    loadCanvasData(id)
+  }
+
+  function closeDiagram() {
+    openDiagramId = null
+    nodes = []
+    edges = []
+    connectFrom = null
+    addingCustom = false
+  }
+
+  onMount(() => {
+    if (projectStore.currentProjectId) loadDiagrams()
   })
 
   $effect(() => {
-    // react to lore changes
-    loreStore.entries
-    if (projectStore.currentProjectId) syncCharacters()
-  })
-
-  $effect(() => {
-    if (projectStore.currentProjectId) loadData()
+    if (projectStore.currentProjectId) loadDiagrams()
   })
 
   // ─── Node drag ───────────────────────────────────────────────────────────────
   function onNodePointerDown(e: PointerEvent, id: string) {
-    if (connectFrom !== null) return  // in connect mode, handled by click
+    if (connectFrom !== null) return
     e.stopPropagation()
     draggingId = id
     const n = nodes.find(n => n.id === id)!
@@ -260,9 +316,10 @@
     return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`
   }
 
-  // canvas dimensions
-  const canvasW = $derived(Math.max(900, ...nodes.map(n => n.x + NODE_W + 60)))
-  const canvasH = $derived(Math.max(500, ...nodes.map(n => n.y + NODE_H + 80)))
+  const canvasW = $derived(nodes.length > 0 ? Math.max(900, ...nodes.map(n => n.x + NODE_W + 60)) : 900)
+  const canvasH = $derived(nodes.length > 0 ? Math.max(500, ...nodes.map(n => n.y + NODE_H + 80)) : 500)
+
+  const openDiagramDef = $derived(diagrams.find(d => d.id === openDiagramId))
 </script>
 
 {#if projectStore.currentProjectId}
@@ -270,6 +327,83 @@
     <!-- Header -->
     <div class="tab-header">
       <h2 class="tab-title">🗺 物語構図</h2>
+      <button class="btn btn-primary btn-sm" onclick={() => { addingDiagram = !addingDiagram; newDiagramName = '' }}>
+        {addingDiagram ? 'キャンセル' : '＋ 新しい構図'}
+      </button>
+    </div>
+
+    {#if addingDiagram}
+      <div class="add-bar">
+        <input
+          class="fi"
+          placeholder="構図の名前（例：第一部、登場人物関係図…）"
+          value={newDiagramName}
+          oninput={(e) => newDiagramName = (e.target as HTMLInputElement).value}
+          onkeydown={(e) => { if (e.key === 'Enter') addDiagram(); if (e.key === 'Escape') { addingDiagram = false } }}
+          autofocus
+        />
+        <button class="btn btn-primary btn-sm" onclick={addDiagram}>作成</button>
+        <button class="btn btn-ghost btn-sm" onclick={() => addingDiagram = false}>キャンセル</button>
+      </div>
+    {/if}
+
+    <!-- Diagram list -->
+    <div class="diagram-list">
+      {#if diagrams.length === 0}
+        <div class="empty-hint">
+          <div class="empty-icon">🗺</div>
+          <div>「＋ 新しい構図」で構図を作成しましょう</div>
+          <div class="empty-sub">複数の構図を作って場面ごとに整理できます</div>
+        </div>
+      {:else}
+        {#each diagrams as diagram (diagram.id)}
+          <button class="diagram-card" onclick={() => openDiagram(diagram.id)}>
+            <span class="diagram-icon">🗺</span>
+            <span class="diagram-name">{diagram.name}</span>
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <span
+              class="diagram-edit"
+              onclick={(e) => { e.stopPropagation(); startEditDiagram(diagram) }}
+              title="名前を変更・削除"
+            >✏</span>
+          </button>
+        {/each}
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Diagram name edit dialog -->
+{#if editDiagramId}
+  {@const d = diagrams.find(d => d.id === editDiagramId)}
+  {#if d}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="modal-overlay" onclick={() => editDiagramId = null}>
+      <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog">
+        <div class="modal-title">構図の名前を変更</div>
+        <input
+          class="fi"
+          value={editDiagramName}
+          oninput={(e) => editDiagramName = (e.target as HTMLInputElement).value}
+          onkeydown={(e) => { if (e.key === 'Enter') saveDiagramName(); if (e.key === 'Escape') editDiagramId = null }}
+          autofocus
+        />
+        <div class="modal-acts">
+          <button class="btn btn-danger btn-sm" onclick={() => deleteDiagram(editDiagramId!)}>削除</button>
+          <button class="btn btn-ghost btn-sm" onclick={() => editDiagramId = null}>キャンセル</button>
+          <button class="btn btn-primary btn-sm" onclick={saveDiagramName}>保存</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/if}
+
+<!-- Diagram overlay -->
+{#if openDiagramId && openDiagramDef}
+  <div class="diagram-overlay">
+    <!-- Overlay header -->
+    <div class="overlay-header">
+      <span class="overlay-title">🗺 {openDiagramDef.name}</span>
       <div class="hdr-acts">
         <button class="btn btn-ghost btn-sm" onclick={() => addingCustom = !addingCustom}>＋ ノード追加</button>
         <button
@@ -281,6 +415,7 @@
           {connectFrom !== null ? '🔗 接続中…' : '🔗 接続'}
         </button>
         <button class="btn btn-ghost btn-sm" onclick={() => showHelp = !showHelp}>?</button>
+        <button class="btn btn-ghost btn-sm close-btn" onclick={closeDiagram}>✕ 閉じる</button>
       </div>
     </div>
 
@@ -288,7 +423,7 @@
       <div class="help-bar">
         <strong>使い方：</strong>
         ノードをドラッグして移動 ／ 「🔗 接続」ボタン後にノードを2つクリックして関係線を追加 ／
-        ノード右クリック or ダブルクリックで名前変更・削除 ／ 関係線ラベルをクリックして編集
+        ノードをダブルクリックで名前変更・削除 ／ 関係線ラベルをクリックして編集
       </div>
     {/if}
 
@@ -296,7 +431,7 @@
       <div class="add-bar">
         <input
           class="fi"
-          placeholder="ノード名（グループ・組織・概念など）"
+          placeholder="ノード名（キャラクター・グループ・概念など）"
           value={newNodeLabel}
           oninput={(e) => newNodeLabel = (e.target as HTMLInputElement).value}
           onkeydown={(e) => { if (e.key === 'Enter') addCustomNode(); if (e.key === 'Escape') addingCustom = false }}
@@ -318,7 +453,6 @@
         onpointerup={onCanvasPointerUp}
         onclick={() => { if (connectFrom === '') connectFrom = null }}
       >
-        <!-- SVG for edges -->
         <svg class="edge-svg" width={canvasW} height={canvasH}>
           <defs>
             <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -341,35 +475,22 @@
               <g onclick={() => startEditEdge(edge.id)} style="cursor:pointer">
                 <rect
                   x={mid.x - 28} y={mid.y - 11}
-                  width="56" height="22"
-                  rx="6"
-                  fill="var(--surface2)"
-                  stroke="var(--accent)"
-                  stroke-width="1"
+                  width="56" height="22" rx="6"
+                  fill="var(--surface2)" stroke="var(--accent)" stroke-width="1"
                 />
-                <text
-                  x={mid.x} y={mid.y + 4}
-                  text-anchor="middle"
-                  font-size="10"
-                  fill="var(--text)"
-                >{edge.label || '…'}</text>
+                <text x={mid.x} y={mid.y + 4} text-anchor="middle" font-size="10" fill="var(--text)">{edge.label || '…'}</text>
               </g>
             {/if}
           {/each}
         </svg>
 
-        <!-- Nodes -->
         {#each nodes as node (node.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
           <div
             class="node"
             class:connect-from={connectFrom === node.id}
             class:connect-target={connectFrom !== null && connectFrom !== node.id}
-            style="
-              left:{node.x}px; top:{node.y}px;
-              width:{NODE_W}px; min-height:{NODE_H}px;
-              border-color:{node.color};
-            "
+            style="left:{node.x}px; top:{node.y}px; width:{NODE_W}px; min-height:{NODE_H}px; border-color:{node.color};"
             onpointerdown={(e) => onNodePointerDown(e, node.id)}
             onclick={() => onNodeClick(node.id)}
             ondblclick={(e) => { e.stopPropagation(); startEditNode(node) }}
@@ -398,63 +519,61 @@
         {#if nodes.length === 0}
           <div class="empty-hint">
             <div class="empty-icon">🗺</div>
-            <div>「設定」タブでキャラクターを追加すると<br>ここに自動表示されます</div>
-            <div class="empty-sub">「＋ ノード追加」でグループ・組織なども追加できます</div>
+            <div>「＋ ノード追加」でキャラクターや<br>グループを追加しましょう</div>
+            <div class="empty-sub">「🔗 接続」で関係線を引けます</div>
           </div>
         {/if}
       </div>
     </div>
-  </div>
 
-  <!-- Edit node dialog -->
-  {#if editNodeId}
-    {@const node = nodes.find(n => n.id === editNodeId)}
-    {#if node}
+    <!-- Edit node dialog -->
+    {#if editNodeId}
+      {@const node = nodes.find(n => n.id === editNodeId)}
+      {#if node}
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+        <div class="modal-overlay" onclick={() => editNodeId = null}>
+          <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog">
+            <div class="modal-title">ノードを編集</div>
+            <input
+              class="fi"
+              value={editNodeLabel}
+              oninput={(e) => editNodeLabel = (e.target as HTMLInputElement).value}
+              onkeydown={(e) => { if (e.key === 'Enter') saveNodeLabel(); if (e.key === 'Escape') editNodeId = null }}
+              autofocus
+            />
+            <div class="modal-acts">
+              <button class="btn btn-danger btn-sm" onclick={() => deleteNode(editNodeId!)}>削除</button>
+              <button class="btn btn-ghost btn-sm" onclick={() => editNodeId = null}>キャンセル</button>
+              <button class="btn btn-primary btn-sm" onclick={saveNodeLabel}>保存</button>
+            </div>
+          </div>
+        </div>
+      {/if}
+    {/if}
+
+    <!-- Edit edge label dialog -->
+    {#if editEdgeId}
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-      <div class="modal-overlay" onclick={() => editNodeId = null}>
+      <div class="modal-overlay" onclick={() => editEdgeId = null}>
         <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog">
-          <div class="modal-title">ノードを編集</div>
+          <div class="modal-title">関係ラベルを編集</div>
           <input
             class="fi"
-            value={editNodeLabel}
-            oninput={(e) => editNodeLabel = (e.target as HTMLInputElement).value}
-            onkeydown={(e) => { if (e.key === 'Enter') saveNodeLabel(); if (e.key === 'Escape') editNodeId = null }}
+            placeholder="例：親子、ライバル、師弟…"
+            value={editEdgeLabel}
+            oninput={(e) => editEdgeLabel = (e.target as HTMLInputElement).value}
+            onkeydown={(e) => { if (e.key === 'Enter') saveEdgeLabel(); if (e.key === 'Escape') editEdgeId = null }}
             autofocus
           />
           <div class="modal-acts">
-            {#if node.custom}
-              <button class="btn btn-danger btn-sm" onclick={() => deleteNode(editNodeId!)}>削除</button>
-            {/if}
-            <button class="btn btn-ghost btn-sm" onclick={() => editNodeId = null}>キャンセル</button>
-            <button class="btn btn-primary btn-sm" onclick={saveNodeLabel}>保存</button>
+            <button class="btn btn-danger btn-sm" onclick={() => deleteEdge(editEdgeId!)}>関係線を削除</button>
+            <button class="btn btn-ghost btn-sm" onclick={() => editEdgeId = null}>キャンセル</button>
+            <button class="btn btn-primary btn-sm" onclick={saveEdgeLabel}>保存</button>
           </div>
         </div>
       </div>
     {/if}
-  {/if}
-
-  <!-- Edit edge label dialog -->
-  {#if editEdgeId}
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="modal-overlay" onclick={() => editEdgeId = null}>
-      <div class="modal-box" onclick={(e) => e.stopPropagation()} role="dialog">
-        <div class="modal-title">関係ラベルを編集</div>
-        <input
-          class="fi"
-          placeholder="例：親子、ライバル、師弟…"
-          value={editEdgeLabel}
-          oninput={(e) => editEdgeLabel = (e.target as HTMLInputElement).value}
-          onkeydown={(e) => { if (e.key === 'Enter') saveEdgeLabel(); if (e.key === 'Escape') editEdgeId = null }}
-          autofocus
-        />
-        <div class="modal-acts">
-          <button class="btn btn-danger btn-sm" onclick={() => deleteEdge(editEdgeId!)}>関係線を削除</button>
-          <button class="btn btn-ghost btn-sm" onclick={() => editEdgeId = null}>キャンセル</button>
-          <button class="btn btn-primary btn-sm" onclick={saveEdgeLabel}>保存</button>
-        </div>
-      </div>
-    </div>
-  {/if}
+  </div>
 {/if}
 
 <style>
@@ -463,11 +582,53 @@
   .tab-title   { font-size: 16px; font-weight: 700; margin-right: auto }
   .hdr-acts    { display: flex; align-items: center; gap: 6px }
 
+  .add-bar  { background: var(--surface2); padding: 10px 20px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0 }
+  .add-bar .fi { flex: 1 }
+
+  /* Diagram list */
+  .diagram-list { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px }
+  .diagram-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; text-align: left; font-family: inherit;
+    font-size: 14px; color: var(--text); transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+  }
+  .diagram-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px var(--shadow) }
+  .diagram-icon { font-size: 20px; flex-shrink: 0 }
+  .diagram-name { flex: 1; font-weight: 600 }
+  .diagram-edit {
+    opacity: 0; font-size: 14px; color: var(--muted); padding: 4px 6px;
+    border-radius: 6px; transition: opacity .15s, color .15s, background .15s;
+    cursor: pointer;
+  }
+  .diagram-card:hover .diagram-edit { opacity: 1 }
+  .diagram-edit:hover { color: var(--accent); background: var(--surface2) }
+
+  .empty-hint {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: 8px; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.8;
+  }
+  .empty-icon { font-size: 40px }
+  .empty-sub  { font-size: 11px }
+
+  /* Overlay */
+  .diagram-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+  }
+  .overlay-header {
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    background: var(--surface);
+  }
+  .overlay-title { font-size: 15px; font-weight: 700; margin-right: auto }
+  .close-btn { color: var(--muted) }
+
   .connect-active { background: color-mix(in srgb, var(--accent) 20%, transparent) !important; color: var(--accent) !important }
 
   .help-bar { background: var(--surface2); padding: 8px 20px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); flex-shrink: 0 }
-  .add-bar  { background: var(--surface2); padding: 10px 20px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0 }
-  .add-bar .fi { flex: 1 }
 
   .canvas-outer { flex: 1; overflow: auto; background: var(--bg) }
   .canvas {
@@ -477,21 +638,14 @@
     background-size: 28px 28px;
   }
 
-  .edge-svg {
-    position: absolute; inset: 0;
-    pointer-events: none;
-  }
+  .edge-svg { position: absolute; inset: 0; pointer-events: none }
   .edge-svg text { font-family: inherit }
 
   .node {
-    position: absolute;
-    border: 2px solid;
-    border-radius: 12px;
-    background: var(--surface);
-    box-shadow: 0 2px 10px var(--shadow);
+    position: absolute; border: 2px solid; border-radius: 12px;
+    background: var(--surface); box-shadow: 0 2px 10px var(--shadow);
     display: flex; flex-direction: column; align-items: center;
-    padding: 8px 8px 4px;
-    cursor: grab; user-select: none;
+    padding: 8px 8px 4px; cursor: grab; user-select: none;
     transition: box-shadow .15s, transform .1s;
   }
   .node:hover  { box-shadow: 0 4px 18px var(--shadow); z-index: 10 }
@@ -521,9 +675,7 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     max-width: 100px; line-height: 1.3;
   }
-  .node-actions {
-    display: flex; gap: 4px; margin-top: 4px; opacity: 0; transition: opacity .15s;
-  }
+  .node-actions { display: flex; gap: 4px; margin-top: 4px; opacity: 0; transition: opacity .15s }
   .node:hover .node-actions { opacity: 1 }
   .node-act-btn {
     background: none; border: none; cursor: pointer;
@@ -532,21 +684,11 @@
   }
   .node-act-btn:hover { color: var(--accent); background: var(--surface2) }
 
-  .empty-hint {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 8px; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.8;
-    pointer-events: none;
-  }
-  .empty-icon { font-size: 40px }
-  .empty-sub  { font-size: 11px }
-
   /* Modals */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 300;
     background: rgba(0,0,0,.5);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
   }
   .modal-box {
     background: var(--surface); border-radius: 14px;

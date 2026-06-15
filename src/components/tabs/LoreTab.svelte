@@ -90,11 +90,6 @@
     if (pid) loreStore.load(pid)
   })
 
-  $effect(() => {
-    // タブ切り替え時にフィルタリセット
-    activeTab
-    filterTag = ''
-  })
 
   const activeTypes = $derived<LoreType[]>(
     activeTab === 'world_lore' ? ['world', 'lore'] : [activeTab as LoreType]
@@ -200,7 +195,7 @@
         <button
           class="lore-tab-btn"
           class:active={activeTab === t.id}
-          onclick={() => { activeTab = t.id; adding = false; resetAddForm() }}
+          onclick={() => { activeTab = t.id; adding = false; filterTag = ''; resetAddForm() }}
         >
           <span class="lt-icon">{t.icon}</span>
           {t.label}

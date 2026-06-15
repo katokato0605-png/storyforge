@@ -8,8 +8,7 @@
   const ideaDs = createDragSort()
   let ideaOrder = $state<string[]>([])
 
-  $effect(() => {
-    if (ideaStore.status !== 'ready') return
+  onMount(() => {
     try {
       const raw = localStorage.getItem('sf_idea_order')
       ideaOrder = raw ? JSON.parse(raw) : []

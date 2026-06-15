@@ -7,6 +7,7 @@
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import ImageGallery from '../ui/ImageGallery.svelte'
+  import { appStore } from '../../lib/stores/appStore.svelte'
 
   const epDs = createDragSort()
   const chDs = createDragSort()
@@ -285,7 +286,22 @@
     if (!chId) return
     const ch = chapters.find(c => c.id === chId)
     if (!ch) return
-    if (ch.beats.length > 0 && !confirm('既存のビートをテンプレートで上書きしますか？')) return
+    if (ch.beats.length > 0) {
+      appStore.openModal('confirm', {
+        title: 'テンプレート適用',
+        message: '既存のビートをテンプレートで上書きしますか？',
+        danger: true,
+        onConfirm: () => {
+          chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+          const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
+            id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
+          }))
+          chapters = chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c)
+          save()
+        },
+      })
+      return
+    }
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
       id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,

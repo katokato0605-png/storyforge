@@ -7,6 +7,12 @@
   import { authStore } from '../../lib/stores/authStore.svelte'
   import Modal from './Modal.svelte'
   import { pushSync, pullSync } from '../../lib/utils/sync'
+  import { FirebaseError } from 'firebase/app'
+
+  function errorMessage(e: unknown): string {
+    if (e instanceof FirebaseError) return `[${e.code}] ${e.message}`
+    return String(e)
+  }
 
   let status = $state<'idle' | 'pushing' | 'pulling' | 'ok' | 'error'>('idle')
   let message = $state('')
@@ -22,7 +28,7 @@
       message = 'アップロード完了！他の端末で同じGoogleアカウントでログインしてダウンロードしてください'
     } catch (e) {
       status = 'error'
-      message = (e as Error).message
+      message = errorMessage(e)
     }
   }
 
@@ -49,7 +55,7 @@
       message = `ダウンロード完了！${projects}作品・${chapters}章を取得しました`
     } catch (e) {
       status = 'error'
-      message = (e as Error).message
+      message = errorMessage(e)
     }
   }
 </script>
@@ -78,7 +84,7 @@
 
     {#if confirmingPull}
       <div class="confirm-box">
-        <p class="confirm-msg">現在のデータが上書きされます。この操作は取り消せません。</p>
+        <p class="confirm-msg">クラウドのデータが現在のデータに追加・更新されます（削除したアイテムは復活することがあります）。この操作は取り消せません。</p>
         <div class="confirm-acts">
           <button class="btn btn-ghost btn-sm" onclick={() => confirmingPull = false}>キャンセル</button>
           <button class="btn btn-danger btn-sm" onclick={executePull}>上書きする</button>

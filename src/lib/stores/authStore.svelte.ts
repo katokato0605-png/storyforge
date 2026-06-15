@@ -5,10 +5,14 @@ function createAuthStore() {
   let user = $state<User | null>(null)
   let loading = $state(true)
 
-  onAuthStateChanged(auth, (u) => {
+  const unsubscribe = onAuthStateChanged(auth, (u) => {
     user = u
     loading = false
   })
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => unsubscribe())
+  }
 
   return {
     get user() { return user },

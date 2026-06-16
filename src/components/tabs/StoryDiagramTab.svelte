@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
+  import { db } from '../../lib/db/database'
+  import type { DiagramData } from '../../lib/db/schema'
 
   // ─── Types ───────────────────────────────────────────────────────────────────
   interface DiagramNode {
@@ -57,66 +59,76 @@
   let editNodeLabel = $state('')
   let showHelp = $state(false)
 
-  // ─── Persistence: diagrams list ───────────────────────────────────────────────
-  function diagramsKey() {
-    return `sf_diagrams_${projectStore.currentProjectId}`
-  }
+  // ─── Persistence: IndexedDB ───────────────────────────────────────────────────
+  function dbId(pid: string) { return `${pid}_canvas` }
 
-  function saveDiagrams() {
-    localStorage.setItem(diagramsKey(), JSON.stringify(diagrams))
-  }
+  // In-memory cache of the full DiagramData record to avoid extra reads
+  let cachedRecord: DiagramData | null = null
 
-  function loadDiagrams() {
+  async function loadDiagrams() {
     const pid = projectStore.currentProjectId
     if (!pid) { diagrams = []; return }
-    try {
-      const raw = localStorage.getItem(diagramsKey())
-      if (raw) {
-        diagrams = JSON.parse(raw)
+    let rec = await db.diagrams.get(dbId(pid))
+    if (!rec) {
+      // Migrate from localStorage if present
+      const lsDiagramsRaw = localStorage.getItem(`sf_diagrams_${pid}`)
+      const lsDefs: DiagramDef[] = lsDiagramsRaw ? JSON.parse(lsDiagramsRaw) : []
+      const nodesMap: Record<string, DiagramNode[]> = {}
+      const edgesMap: Record<string, DiagramEdge[]> = {}
+      if (lsDefs.length) {
+        for (const d of lsDefs) {
+          const sn = localStorage.getItem(`sf_diagram_${pid}_${d.id}_nodes`)
+          const se = localStorage.getItem(`sf_diagram_${pid}_${d.id}_edges`)
+          nodesMap[d.id] = sn ? JSON.parse(sn) : []
+          edgesMap[d.id] = se ? JSON.parse(se) : []
+        }
       } else {
+        // Even older single-diagram format
         const oldNodes = localStorage.getItem(`sf_diagram_${pid}_nodes`)
         if (oldNodes) {
           const defId = crypto.randomUUID()
-          diagrams = [{ id: defId, name: '構図 1' }]
-          localStorage.setItem(`sf_diagram_${pid}_${defId}_nodes`, oldNodes)
+          lsDefs.push({ id: defId, name: '構図 1' })
+          nodesMap[defId] = JSON.parse(oldNodes)
           const oldEdges = localStorage.getItem(`sf_diagram_${pid}_edges`)
-          if (oldEdges) localStorage.setItem(`sf_diagram_${pid}_${defId}_edges`, oldEdges)
-        } else {
-          diagrams = []
+          edgesMap[defId] = oldEdges ? JSON.parse(oldEdges) : []
         }
-        saveDiagrams()
       }
-    } catch {
-      diagrams = []
+      rec = { id: dbId(pid), projectId: pid, diagrams: lsDefs, nodes: nodesMap, edges: edgesMap, updatedAt: Date.now() }
+      await db.diagrams.put(rec)
     }
+    cachedRecord = rec
+    diagrams = (rec.diagrams as DiagramDef[]) ?? []
   }
 
-  // ─── Persistence: canvas data ─────────────────────────────────────────────────
-  function nodeKey(diagId: string) {
-    return `sf_diagram_${projectStore.currentProjectId}_${diagId}_nodes`
+  async function persistRecord() {
+    const pid = projectStore.currentProjectId
+    if (!pid || !cachedRecord) return
+    cachedRecord.updatedAt = Date.now()
+    await db.diagrams.put(cachedRecord)
   }
-  function edgeKey(diagId: string) {
-    return `sf_diagram_${projectStore.currentProjectId}_${diagId}_edges`
+
+  function saveDiagrams() {
+    if (!cachedRecord) return
+    cachedRecord.diagrams = [...diagrams]
+    persistRecord()
   }
 
   function saveNodes() {
-    if (!openDiagramId) return
-    localStorage.setItem(nodeKey(openDiagramId), JSON.stringify(nodes))
+    if (!openDiagramId || !cachedRecord) return
+    cachedRecord.nodes = { ...cachedRecord.nodes, [openDiagramId]: [...nodes] }
+    persistRecord()
   }
+
   function saveEdges() {
-    if (!openDiagramId) return
-    localStorage.setItem(edgeKey(openDiagramId), JSON.stringify(edges))
+    if (!openDiagramId || !cachedRecord) return
+    cachedRecord.edges = { ...cachedRecord.edges, [openDiagramId]: [...edges] }
+    persistRecord()
   }
 
   function loadCanvasData(diagId: string) {
-    try {
-      const sn = localStorage.getItem(nodeKey(diagId))
-      const se = localStorage.getItem(edgeKey(diagId))
-      nodes = sn ? JSON.parse(sn) : []
-      edges = se ? JSON.parse(se) : []
-    } catch {
-      nodes = []; edges = []
-    }
+    if (!cachedRecord) { nodes = []; edges = []; return }
+    nodes = ((cachedRecord.nodes as Record<string, DiagramNode[]>)[diagId] ?? []) as DiagramNode[]
+    edges = ((cachedRecord.edges as Record<string, DiagramEdge[]>)[diagId] ?? []) as DiagramEdge[]
   }
 
   // ─── Diagram management ───────────────────────────────────────────────────────
@@ -142,13 +154,14 @@
   }
 
   function deleteDiagram(id: string) {
-    const pid = projectStore.currentProjectId
     diagrams = diagrams.filter(d => d.id !== id)
-    saveDiagrams()
-    if (pid) {
-      localStorage.removeItem(nodeKey(id))
-      localStorage.removeItem(edgeKey(id))
+    if (cachedRecord) {
+      const { [id]: _n, ...restNodes } = cachedRecord.nodes as Record<string, unknown[]>
+      const { [id]: _e, ...restEdges } = cachedRecord.edges as Record<string, unknown[]>
+      cachedRecord.nodes = restNodes
+      cachedRecord.edges = restEdges
     }
+    saveDiagrams()
     if (openDiagramId === id) closeDiagram()
     editDiagramId = null
   }
@@ -173,7 +186,8 @@
   })
 
   $effect(() => {
-    if (projectStore.currentProjectId) loadDiagrams()
+    const pid = projectStore.currentProjectId
+    if (pid) loadDiagrams()
   })
 
   // ─── Connect mode ────────────────────────────────────────────────────────────

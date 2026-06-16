@@ -74,3 +74,12 @@ export interface TabImage {
   dataUrl: string
   createdAt: number
 }
+
+export interface DiagramData {
+  id: string          // `${projectId}_canvas`
+  projectId: string
+  diagrams: unknown   // DiagramDef[]
+  nodes: Record<string, unknown[]>   // diagId -> DiagramNode[]
+  edges: Record<string, unknown[]>   // diagId -> DiagramEdge[]
+  updatedAt: number
+}

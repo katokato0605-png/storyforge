@@ -18,6 +18,26 @@
   let sceneTitle = $state('')
   let sceneContent = $state('')
 
+  // ─── Swipe navigation ────────────────────────────────────────────────────────
+  let swipeStartX = 0
+  let swipeStartY = 0
+
+  function onTouchStart(e: TouchEvent) {
+    swipeStartX = e.touches[0].clientX
+    swipeStartY = e.touches[0].clientY
+  }
+
+  function onTouchEnd(e: TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeStartX
+    const dy = e.changedTouches[0].clientY - swipeStartY
+    // 水平方向に 60px 以上、かつ垂直より横方向が大きい場合のみ
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return
+    const tabs = appStore.tabs
+    const cur = tabs.findIndex(t => t.id === appStore.activeTab)
+    if (dx < 0 && cur < tabs.length - 1) appStore.setTab(tabs[cur + 1].id)  // 左スワイプ → 次タブ
+    if (dx > 0 && cur > 0)               appStore.setTab(tabs[cur - 1].id)  // 右スワイプ → 前タブ
+  }
+
   function openScene() { sceneOpen = true }
   function closeScene() { sceneOpen = false; sceneTitle = ''; sceneContent = '' }
 
@@ -41,7 +61,7 @@
   {#if projectStore.currentProject}
     <div class="work-layout">
       <Sidebar />
-      <main class="work-main">
+      <main class="work-main" ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
         {#if children}
           {@render children()}
         {:else}

@@ -11,6 +11,7 @@ export function isConfigured(): boolean {
 }
 
 export async function pushSync(userId: string): Promise<void> {
+  if (!db) throw new Error('Firebase が設定されていません')
   const data = await exportAll()
   if (data.length > 800_000) {
     throw new Error(`データサイズが大きすぎます（${Math.round(data.length / 1024)}KB）。不要なデータを削除してください。`)
@@ -22,11 +23,13 @@ export async function pushSync(userId: string): Promise<void> {
 }
 
 export async function cloudExists(userId: string): Promise<boolean> {
+  if (!db) return false
   const snap = await getDoc(doc(db, 'syncs', userId))
   return snap.exists()
 }
 
 export async function pullSync(userId: string): Promise<{ projects: number; chapters: number }> {
+  if (!db) throw new Error('Firebase が設定されていません')
   const snap = await getDoc(doc(db, 'syncs', userId))
   if (!snap.exists()) throw new Error('クラウドにデータが見つかりません')
   const { data } = snap.data() as { data: string }

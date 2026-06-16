@@ -678,6 +678,14 @@
     },
   ]
 
+  const isInProject = $derived(!!projectStore.currentProjectId)
+
+  function toggleScene(tags: string, set: (v: string) => void) {
+    const arr = tags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    const has = arr.includes('書きたいシーン')
+    set(has ? arr.filter(t => t !== '書きたいシーン').join(', ') : [...arr, '書きたいシーン'].join(', '))
+  }
+
   let showTemplateMenu = $state(false)
   let filterTag = $state('')
   let newTitle = $state('')
@@ -797,7 +805,7 @@
 </script>
 
 <datalist id="idea-tag-suggestions">
-  <option value="書きたいシーン"></option>
+  {#if isInProject}<option value="書きたいシーン"></option>{/if}
   {#each projectStore.projects as p}
     <option value={p.title}></option>
   {/each}
@@ -810,6 +818,13 @@
   <div class="tab-header">
     <h2 class="tab-title">💡 アイデアVault</h2>
     <div class="header-actions">
+      {#if isInProject}
+        <button
+          class="btn btn-sm scene-filter-btn"
+          class:active={filterTag === '書きたいシーン'}
+          onclick={() => filterTag = filterTag === '書きたいシーン' ? '' : '書きたいシーン'}
+        >📝 書きたいシーン</button>
+      {/if}
       {#if allTags.length > 0}
         <select class="fsel hdr-sel" value={filterTag} onchange={(e) => filterTag = (e.target as HTMLSelectElement).value} aria-label="タグ絞り込み">
           <option value="">すべてのタグ</option>
@@ -864,6 +879,15 @@
           placeholder="タグ（カンマ区切り）"
           aria-label="タグ"
         />
+        {#if isInProject}
+          {@const hasScene = newTags.split(/[,，\s]+/).map(t => t.trim()).includes('書きたいシーン')}
+          <button
+            class="btn btn-sm scene-tag-btn"
+            class:active={hasScene}
+            onclick={() => toggleScene(newTags, v => newTags = v)}
+            title="書きたいシーンとしてタグ付け"
+          >📝{hasScene ? ' ✓' : ''}</button>
+        {/if}
         <button class="btn btn-primary btn-sm" onclick={addIdea} disabled={!newTitle.trim() && !newContent.trim()}>保存</button>
       </div>
     </div>
@@ -956,7 +980,14 @@
           placeholder="タグ（カンマ区切り）"
           aria-label="タグ"
         />
-        {#if projectStore.currentProjectId}
+        {#if isInProject}
+          {@const hasScene = editTags.split(/[,，\s]+/).map(t => t.trim()).includes('書きたいシーン')}
+          <button
+            class="btn btn-sm scene-tag-btn"
+            class:active={hasScene}
+            onclick={() => toggleScene(editTags, v => editTags = v)}
+            title="書きたいシーンとしてタグ付け"
+          >📝 書きたいシーン{hasScene ? ' ✓' : ''}</button>
           {@const currentProject = projectStore.projects.find(p => p.id === projectStore.currentProjectId)}
           {@const linked = !!currentProject && editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean).includes(currentProject.title)}
           <button class="btn btn-ghost btn-sm" onclick={() => linkToggle(editId!, linked)} title={linked ? 'リンク解除' : 'この作品にリンク'}>
@@ -1002,6 +1033,12 @@
   .fs-tags-input { flex: 1; min-width: 120px; font-size: 13px }
   .tag-linked  { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); cursor: pointer }
   .tag-linked:hover { background: color-mix(in srgb, var(--accent) 35%, transparent) }
+  .scene-filter-btn { border: 1px solid var(--border); color: var(--muted); background: none }
+  .scene-filter-btn:hover { color: var(--text); border-color: var(--accent) }
+  .scene-filter-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent) }
+  .scene-tag-btn { border: 1px solid var(--border); color: var(--muted); background: none; flex-shrink: 0 }
+  .scene-tag-btn:hover { border-color: var(--accent); color: var(--accent) }
+  .scene-tag-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent) }
   .tmpl-wrap   { position: relative }
   .tmpl-backdrop { position: fixed; inset: 0; z-index: 10 }
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }

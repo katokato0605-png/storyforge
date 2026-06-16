@@ -69,20 +69,23 @@ function onLogout() {
 
 let _loginInFlight = false
 
-const _unsubAuth = onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    if (_loginInFlight) return
-    _loginInFlight = true
-    try { await onLogin(user) } finally { _loginInFlight = false }
-  } else {
-    onLogout()
-  }
-})
+let _unsubAuth: (() => void) | null = null
+if (auth) {
+  _unsubAuth = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      if (_loginInFlight) return
+      _loginInFlight = true
+      try { await onLogin(user) } finally { _loginInFlight = false }
+    } else {
+      onLogout()
+    }
+  })
+}
 
 // Prevent duplicate listeners on HMR by unsubscribing old instance
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    _unsubAuth()
+    _unsubAuth?.()
     if (intervalId) { clearInterval(intervalId); intervalId = null }
   })
 }

@@ -18,6 +18,8 @@
     from: string
     to: string
     label: string
+    hx?: number  // handle x (bezier midpoint drag position)
+    hy?: number  // handle y
   }
 
   interface DiagramDef {
@@ -41,11 +43,13 @@
   // ─── Canvas state (for open diagram) ─────────────────────────────────────────
   let nodes = $state<DiagramNode[]>([])
   let edges = $state<DiagramEdge[]>([])
-  let connectFrom = $state<string | null>(null)
   let editEdgeId = $state<string | null>(null)
   let editEdgeLabel = $state('')
   let draggingId = $state<string | null>(null)
   let dragOffset = $state({ x: 0, y: 0 })
+  let draggingEdgeId = $state<string | null>(null)
+  let edgeDragOffset = $state({ x: 0, y: 0 })
+  let connectFrom = $state<string | null>(null)
   let canvasEl: HTMLDivElement
   let addingCustom = $state(false)
   let newNodeLabel = $state('')
@@ -70,7 +74,6 @@
       if (raw) {
         diagrams = JSON.parse(raw)
       } else {
-        // migrate old single-diagram data if exists
         const oldNodes = localStorage.getItem(`sf_diagram_${pid}_nodes`)
         if (oldNodes) {
           const defId = crypto.randomUUID()
@@ -152,7 +155,6 @@
 
   function openDiagram(id: string) {
     openDiagramId = id
-    connectFrom = null
     addingCustom = false
     showHelp = false
     loadCanvasData(id)
@@ -162,8 +164,8 @@
     openDiagramId = null
     nodes = []
     edges = []
-    connectFrom = null
     addingCustom = false
+    connectFrom = null
   }
 
   onMount(() => {
@@ -173,6 +175,31 @@
   $effect(() => {
     if (projectStore.currentProjectId) loadDiagrams()
   })
+
+  // ─── Connect mode ────────────────────────────────────────────────────────────
+  function onNodeClick(e: MouseEvent, id: string) {
+    if (draggingId) return
+    if (connectFrom === null) return
+    if (connectFrom === id) { connectFrom = null; return }
+    const already = edges.find(edge =>
+      (edge.from === connectFrom && edge.to === id) ||
+      (edge.from === id && edge.to === connectFrom)
+    )
+    if (!already) {
+      const edge: DiagramEdge = { id: crypto.randomUUID(), from: connectFrom!, to: id, label: '' }
+      edges = [...edges, edge]
+      saveEdges()
+      editEdgeId = edge.id
+      editEdgeLabel = ''
+    }
+    connectFrom = null
+  }
+
+  function onNodeDblClick(e: MouseEvent, id: string) {
+    e.stopPropagation()
+    if (connectFrom !== null) { connectFrom = null; return }
+    connectFrom = id
+  }
 
   // ─── Node drag ───────────────────────────────────────────────────────────────
   function onNodePointerDown(e: PointerEvent, id: string) {
@@ -185,39 +212,32 @@
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
-  function onCanvasPointerMove(e: PointerEvent) {
-    if (!draggingId) return
+  // ─── Edge handle drag ─────────────────────────────────────────────────────────
+  function onEdgeHandlePointerDown(e: PointerEvent, edge: DiagramEdge) {
+    e.stopPropagation()
+    const mid = edgeMidpoint(edge)!
     const rect = canvasEl.getBoundingClientRect()
-    const x = Math.max(0, e.clientX - rect.left - dragOffset.x)
-    const y = Math.max(0, e.clientY - rect.top - dragOffset.y)
-    nodes = nodes.map(n => n.id === draggingId ? { ...n, x, y } : n)
+    edgeDragOffset = { x: e.clientX - rect.left - mid.x, y: e.clientY - rect.top - mid.y }
+    draggingEdgeId = edge.id
+    canvasEl.setPointerCapture(e.pointerId)
+  }
+
+  function onCanvasPointerMove(e: PointerEvent) {
+    const rect = canvasEl.getBoundingClientRect()
+    if (draggingId) {
+      const x = Math.max(0, e.clientX - rect.left - dragOffset.x)
+      const y = Math.max(0, e.clientY - rect.top - dragOffset.y)
+      nodes = nodes.map(n => n.id === draggingId ? { ...n, x, y } : n)
+    } else if (draggingEdgeId) {
+      const hx = e.clientX - rect.left - edgeDragOffset.x
+      const hy = e.clientY - rect.top - edgeDragOffset.y
+      edges = edges.map(edge => edge.id === draggingEdgeId ? { ...edge, hx, hy } : edge)
+    }
   }
 
   function onCanvasPointerUp() {
     if (draggingId) { saveNodes(); draggingId = null }
-  }
-
-  // ─── Connect mode ────────────────────────────────────────────────────────────
-  function onNodeClick(id: string) {
-    if (draggingId) return
-    if (connectFrom === null) {
-      connectFrom = id
-    } else if (connectFrom === id) {
-      connectFrom = null
-    } else {
-      const already = edges.find(e =>
-        (e.from === connectFrom && e.to === id) ||
-        (e.from === id && e.to === connectFrom)
-      )
-      if (!already) {
-        const edge: DiagramEdge = { id: crypto.randomUUID(), from: connectFrom!, to: id, label: '' }
-        edges = [...edges, edge]
-        saveEdges()
-        editEdgeId = edge.id
-        editEdgeLabel = ''
-      }
-      connectFrom = null
-    }
+    if (draggingEdgeId) { saveEdges(); draggingEdgeId = null }
   }
 
   // ─── Edge label edit ─────────────────────────────────────────────────────────
@@ -297,6 +317,9 @@
     const f = nodes.find(n => n.id === edge.from)
     const t = nodes.find(n => n.id === edge.to)
     if (!f || !t) return null
+    if (edge.hx !== undefined && edge.hy !== undefined) {
+      return { x: edge.hx, y: edge.hy }
+    }
     return {
       x: (f.x + NODE_W / 2 + t.x + NODE_W / 2) / 2,
       y: (f.y + NODE_H / 2 + t.y + NODE_H / 2) / 2,
@@ -311,8 +334,15 @@
     const fy = f.y + NODE_H / 2
     const tx = t.x + NODE_W / 2
     const ty = t.y + NODE_H / 2
-    const cx = (fx + tx) / 2
-    const cy = (fy + ty) / 2 - 30
+    let cx: number, cy: number
+    if (edge.hx !== undefined && edge.hy !== undefined) {
+      // Derive control point so bezier passes through handle at t=0.5
+      cx = 2 * edge.hx - 0.5 * (fx + tx)
+      cy = 2 * edge.hy - 0.5 * (fy + ty)
+    } else {
+      cx = (fx + tx) / 2
+      cy = (fy + ty) / 2 - 30
+    }
     return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`
   }
 
@@ -406,14 +436,6 @@
       <span class="overlay-title">🗺 {openDiagramDef.name}</span>
       <div class="hdr-acts">
         <button class="btn btn-ghost btn-sm" onclick={() => addingCustom = !addingCustom}>＋ ノード追加</button>
-        <button
-          class="btn btn-sm"
-          class:connect-active={connectFrom !== null}
-          onclick={() => connectFrom = connectFrom === null ? '' : null}
-          title="2つのノードを順にクリックして関係線を引く"
-        >
-          {connectFrom !== null ? '🔗 接続中…' : '🔗 接続'}
-        </button>
         <button class="btn btn-ghost btn-sm" onclick={() => showHelp = !showHelp}>?</button>
         <button class="btn btn-ghost btn-sm close-btn" onclick={closeDiagram}>✕ 閉じる</button>
       </div>
@@ -422,8 +444,11 @@
     {#if showHelp}
       <div class="help-bar">
         <strong>使い方：</strong>
-        ノードをドラッグして移動 ／ 「🔗 接続」ボタン後にノードを2つクリックして関係線を追加 ／
-        ノードをダブルクリックで名前変更・削除 ／ 関係線ラベルをクリックして編集
+        ノードをドラッグして移動 ／
+        ノードをダブルクリックで接続モード開始 → 別のノードをクリックして関係線を追加 ／
+        ノードの ✏ ボタンで名前変更・削除 ／
+        関係線のラベルをドラッグして曲がりを調整 ／
+        関係線の ✏ ボタンでラベル編集・削除
       </div>
     {/if}
 
@@ -451,7 +476,6 @@
         style="width:{canvasW}px;height:{canvasH}px"
         onpointermove={onCanvasPointerMove}
         onpointerup={onCanvasPointerUp}
-        onclick={() => { if (connectFrom === '') connectFrom = null }}
       >
         <svg class="edge-svg" width={canvasW} height={canvasH}>
           <defs>
@@ -471,14 +495,30 @@
               opacity="0.7"
             />
             {#if mid}
-              <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-              <g onclick={() => startEditEdge(edge.id)} style="cursor:pointer">
+              <!-- Drag handle: label rect -->
+              <g
+                style="pointer-events: all; cursor: move"
+                onpointerdown={(e) => onEdgeHandlePointerDown(e, edge)}
+              >
                 <rect
                   x={mid.x - 28} y={mid.y - 11}
                   width="56" height="22" rx="6"
                   fill="var(--surface2)" stroke="var(--accent)" stroke-width="1"
                 />
                 <text x={mid.x} y={mid.y + 4} text-anchor="middle" font-size="10" fill="var(--text)">{edge.label || '…'}</text>
+              </g>
+              <!-- Edit button -->
+              <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+              <g
+                style="pointer-events: all; cursor: pointer"
+                onclick={(e) => { e.stopPropagation(); startEditEdge(edge.id) }}
+              >
+                <rect
+                  x={mid.x + 32} y={mid.y - 11}
+                  width="22" height="22" rx="6"
+                  fill="var(--surface2)" stroke="var(--accent)" stroke-width="1"
+                />
+                <text x={mid.x + 43} y={mid.y + 4} text-anchor="middle" font-size="11" fill="var(--accent)">✏</text>
               </g>
             {/if}
           {/each}
@@ -492,8 +532,8 @@
             class:connect-target={connectFrom !== null && connectFrom !== node.id}
             style="left:{node.x}px; top:{node.y}px; width:{NODE_W}px; min-height:{NODE_H}px; border-color:{node.color};"
             onpointerdown={(e) => onNodePointerDown(e, node.id)}
-            onclick={() => onNodeClick(node.id)}
-            ondblclick={(e) => { e.stopPropagation(); startEditNode(node) }}
+            onclick={(e) => onNodeClick(e, node.id)}
+            ondblclick={(e) => onNodeDblClick(e, node.id)}
           >
             {#if node.imageUrl}
               <div class="node-img-wrap">
@@ -520,7 +560,6 @@
           <div class="empty-hint">
             <div class="empty-icon">🗺</div>
             <div>「＋ ノード追加」でキャラクターや<br>グループを追加しましょう</div>
-            <div class="empty-sub">「🔗 接続」で関係線を引けます</div>
           </div>
         {/if}
       </div>
@@ -626,8 +665,6 @@
   .overlay-title { font-size: 15px; font-weight: 700; margin-right: auto }
   .close-btn { color: var(--muted) }
 
-  .connect-active { background: color-mix(in srgb, var(--accent) 20%, transparent) !important; color: var(--accent) !important }
-
   .help-bar { background: var(--surface2); padding: 8px 20px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); flex-shrink: 0 }
 
   .canvas-outer { flex: 1; overflow: auto; background: var(--bg) }
@@ -649,8 +686,8 @@
     transition: box-shadow .15s, transform .1s;
   }
   .node:hover  { box-shadow: 0 4px 18px var(--shadow); z-index: 10 }
-  .node.connect-from    { box-shadow: 0 0 0 3px var(--accent); z-index: 20 }
-  .node.connect-target  { cursor: crosshair }
+  .node.connect-from   { box-shadow: 0 0 0 3px var(--accent); z-index: 20 }
+  .node.connect-target { cursor: crosshair }
   .node.connect-target:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent) }
 
   .node-avatar {

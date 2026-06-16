@@ -19,34 +19,40 @@
   let sceneContent = $state('')
 
   // ─── Swipe navigation ────────────────────────────────────────────────────────
-  let swipeStartX = 0
-  let swipeStartY = 0
-
-  function onTouchStart(e: TouchEvent) {
-    swipeStartX = e.touches[0].clientX
-    swipeStartY = e.touches[0].clientY
-  }
-
-  function onTouchEnd(e: TouchEvent) {
-    const dx = e.changedTouches[0].clientX - swipeStartX
-    const dy = e.changedTouches[0].clientY - swipeStartY
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return
-    // input/textarea/select 上のスワイプは無視
-    const tag = (e.target as Element)?.tagName
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-    const tabs = appStore.tabs
-    const cur = tabs.findIndex(t => t.id === appStore.activeTab)
-    if (dx < 0 && cur < tabs.length - 1) appStore.setTab(tabs[cur + 1].id)
-    if (dx > 0 && cur > 0)               appStore.setTab(tabs[cur - 1].id)
-  }
-
-  // document レベルで登録することで子要素のスクロールに関わらず検出できる
   $effect(() => {
+    let startX = 0
+    let startY = 0
+
+    function onTouchStart(e: TouchEvent) {
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - startX
+      const dy = e.changedTouches[0].clientY - startY
+      // 水平距離が 50px 未満 or 縦方向のほうが大きい場合は無視
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return
+      // 入力系・contenteditable 要素上は無視
+      let el = e.target as Element | null
+      while (el) {
+        const tag = el.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        if ((el as HTMLElement).isContentEditable) return
+        el = el.parentElement
+      }
+      const tabs = appStore.tabs
+      const cur = tabs.findIndex(t => t.id === appStore.activeTab)
+      if (cur === -1) return
+      if (dx < 0 && cur < tabs.length - 1) appStore.setTab(tabs[cur + 1].id)
+      if (dx > 0 && cur > 0)               appStore.setTab(tabs[cur - 1].id)
+    }
+
     document.addEventListener('touchstart', onTouchStart, { passive: true })
-    document.addEventListener('touchend', onTouchEnd, { passive: true })
+    document.addEventListener('touchend',   onTouchEnd,   { passive: true })
     return () => {
       document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchend',   onTouchEnd)
     }
   })
 

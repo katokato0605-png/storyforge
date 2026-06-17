@@ -222,7 +222,7 @@
     draggingId = id
     const n = nodes.find(n => n.id === id)!
     const rect = canvasEl.getBoundingClientRect()
-    dragOffset = { x: e.clientX - rect.left - n.x, y: e.clientY - rect.top - n.y }
+    dragOffset = { x: (e.clientX - rect.left) / zoom - n.x, y: (e.clientY - rect.top) / zoom - n.y }
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
@@ -231,7 +231,7 @@
     e.stopPropagation()
     const mid = edgeMidpoint(edge)!
     const rect = canvasEl.getBoundingClientRect()
-    edgeDragOffset = { x: e.clientX - rect.left - mid.x, y: e.clientY - rect.top - mid.y }
+    edgeDragOffset = { x: (e.clientX - rect.left) / zoom - mid.x, y: (e.clientY - rect.top) / zoom - mid.y }
     draggingEdgeId = edge.id
     canvasEl.setPointerCapture(e.pointerId)
   }
@@ -239,12 +239,12 @@
   function onCanvasPointerMove(e: PointerEvent) {
     const rect = canvasEl.getBoundingClientRect()
     if (draggingId) {
-      const x = Math.max(0, e.clientX - rect.left - dragOffset.x)
-      const y = Math.max(0, e.clientY - rect.top - dragOffset.y)
+      const x = Math.max(0, (e.clientX - rect.left) / zoom - dragOffset.x)
+      const y = Math.max(0, (e.clientY - rect.top) / zoom - dragOffset.y)
       nodes = nodes.map(n => n.id === draggingId ? { ...n, x, y } : n)
     } else if (draggingEdgeId) {
-      const hx = e.clientX - rect.left - edgeDragOffset.x
-      const hy = e.clientY - rect.top - edgeDragOffset.y
+      const hx = (e.clientX - rect.left) / zoom - edgeDragOffset.x
+      const hy = (e.clientY - rect.top) / zoom - edgeDragOffset.y
       edges = edges.map(edge => edge.id === draggingEdgeId ? { ...edge, hx, hy } : edge)
     }
   }
@@ -364,6 +364,26 @@
   const canvasH = $derived(nodes.length > 0 ? Math.max(500, ...nodes.map(n => n.y + NODE_H + 80)) : 500)
 
   const openDiagramDef = $derived(diagrams.find(d => d.id === openDiagramId))
+
+  // ─── Zoom ────────────────────────────────────────────────────────────────────
+  let zoom = $state(1)
+  let canvasOuterEl: HTMLDivElement
+
+  function zoomIn()  { zoom = Math.min(2, +(zoom + 0.1).toFixed(1)) }
+  function zoomOut() { zoom = Math.max(0.2, +(zoom - 0.1).toFixed(1)) }
+  function zoomFit() {
+    if (!canvasOuterEl) return
+    const vw = canvasOuterEl.clientWidth
+    const vh = canvasOuterEl.clientHeight
+    zoom = Math.min(1, Math.min(+(vw / canvasW).toFixed(2), +(vh / canvasH).toFixed(2)))
+  }
+
+  $effect(() => {
+    if (openDiagramId) {
+      // auto-fit on open for narrow screens
+      setTimeout(zoomFit, 0)
+    }
+  })
 </script>
 
 {#if projectStore.currentProjectId}
@@ -449,9 +469,14 @@
     <div class="overlay-header">
       <span class="overlay-title">🗺 {openDiagramDef.name}</span>
       <div class="hdr-acts">
-        <button class="btn btn-ghost btn-sm" onclick={() => addingCustom = !addingCustom}>＋ ノード追加</button>
+        <button class="btn btn-ghost btn-sm" onclick={() => addingCustom = !addingCustom}>＋ ノード</button>
+        <div class="zoom-ctrl">
+          <button class="zoom-btn" onclick={zoomOut} title="縮小">－</button>
+          <button class="zoom-pct" onclick={zoomFit} title="全体表示">{Math.round(zoom * 100)}%</button>
+          <button class="zoom-btn" onclick={zoomIn} title="拡大">＋</button>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick={() => showHelp = !showHelp}>?</button>
-        <button class="btn btn-ghost btn-sm close-btn" onclick={closeDiagram}>✕ 閉じる</button>
+        <button class="btn btn-ghost btn-sm close-btn" onclick={closeDiagram}>✕</button>
       </div>
     </div>
 
@@ -482,12 +507,13 @@
     {/if}
 
     <!-- Canvas -->
-    <div class="canvas-outer">
+    <div class="canvas-outer" bind:this={canvasOuterEl}>
+      <div class="canvas-scaler" style="width:{canvasW * zoom}px;height:{canvasH * zoom}px">
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="canvas"
         bind:this={canvasEl}
-        style="width:{canvasW}px;height:{canvasH}px"
+        style="width:{canvasW}px;height:{canvasH}px;transform:scale({zoom});transform-origin:0 0;"
         onpointermove={onCanvasPointerMove}
         onpointerup={onCanvasPointerUp}
       >
@@ -577,6 +603,7 @@
           </div>
         {/if}
       </div>
+      </div><!-- /canvas-scaler -->
     </div>
 
     <!-- Edit node dialog -->
@@ -681,7 +708,21 @@
 
   .help-bar { background: var(--surface2); padding: 8px 20px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); flex-shrink: 0 }
 
-  .canvas-outer { flex: 1; overflow: auto; background: var(--bg) }
+  /* Zoom controls */
+  .zoom-ctrl { display: flex; align-items: center; gap: 2px; background: var(--surface2); border-radius: 8px; padding: 2px }
+  .zoom-btn  { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text); padding: 2px 8px; border-radius: 6px; line-height: 1 }
+  .zoom-btn:hover { background: var(--border) }
+  .zoom-pct  { background: none; border: none; cursor: pointer; font-size: 11px; color: var(--muted); padding: 2px 4px; min-width: 38px; text-align: center; border-radius: 4px }
+  .zoom-pct:hover { color: var(--accent) }
+
+  @media (max-width: 640px) {
+    .overlay-header { flex-wrap: wrap; padding: 8px 12px; gap: 6px }
+    .overlay-title  { font-size: 13px; min-width: 0; flex: 1 1 100% }
+    .hdr-acts       { flex: 1 1 100%; justify-content: flex-end }
+  }
+
+  .canvas-outer   { flex: 1; overflow: auto; background: var(--bg) }
+  .canvas-scaler  { position: relative; flex-shrink: 0 }
   .canvas {
     position: relative;
     background:

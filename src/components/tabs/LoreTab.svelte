@@ -6,7 +6,6 @@
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import type { LoreType } from '../../lib/db/schema'
   import { characterCategories } from '../../lib/characterTemplates'
-  import ImageGallery from '../ui/ImageGallery.svelte'
 
   const loreDs = createDragSort()
   let loreOrder = $state<string[]>([])
@@ -323,7 +322,6 @@
         {/each}
       {/if}
     </div>
-    <ImageGallery projectId={projectStore.currentProjectId} tabId="lore" />
   </div>
 {/if}
 

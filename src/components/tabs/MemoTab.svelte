@@ -1,7 +1,6 @@
 <script lang="ts">
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import NoteEditor from '../writing/NoteEditor.svelte'
-  import ImageGallery from '../ui/ImageGallery.svelte'
 </script>
 
 {#if projectStore.currentProjectId}
@@ -17,7 +16,6 @@
         placeholder="作品に関するメモ、アイデアの断片、気になったこと、参考資料のリンクなどを自由に記録してください…"
       />
     </div>
-    <ImageGallery projectId={projectStore.currentProjectId} tabId="memo" />
   </div>
 {/if}
 

@@ -697,12 +697,16 @@
   let editTitle = $state('')
   let editContent = $state('')
   let editTags = $state('')
+  let editImageUrl = $state<string | undefined>(undefined)
+  let viewImageUrl = $state<string | null>(null)
+  let imgFileInput: HTMLInputElement
 
-  function startEdit(idea: { id: string; title: string; content: string; tags: string[] }) {
+  function startEdit(idea: { id: string; title: string; content: string; tags: string[]; imageUrl?: string }) {
     editId = idea.id
     editTitle = idea.title ?? ''
     editContent = idea.content
     editTags = idea.tags.join(', ')
+    editImageUrl = idea.imageUrl
   }
 
   async function saveEdit() {
@@ -710,13 +714,21 @@
     const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
     const linkedProjectId = matchedProject?.id ?? null
-    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, linkedProjectId })
+    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, linkedProjectId, imageUrl: editImageUrl })
     editId = null
   }
 
   function handleEditKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit()
     if (e.key === 'Escape') editId = null
+  }
+
+  function handleImageFile(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { editImageUrl = reader.result as string }
+    reader.readAsDataURL(file)
   }
 
   function useTemplate(label: string, content: string) {
@@ -939,6 +951,10 @@
               {/each}
             </div>
           {/if}
+          {#if idea.imageUrl}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <img class="card-thumb" src={idea.imageUrl} alt="添付画像" onclick={(e) => { e.stopPropagation(); viewImageUrl = idea.imageUrl! }} />
+          {/if}
         </div>
       {/each}
     {/if}
@@ -970,6 +986,17 @@
           placeholder="詳細（Ctrl+Enter で保存）"
           aria-label="詳細"
         ></textarea>
+        <div class="img-section">
+          {#if editImageUrl}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div class="img-thumb-wrap">
+              <img class="img-thumb" src={editImageUrl} alt="添付画像" onclick={() => viewImageUrl = editImageUrl!} />
+              <button class="img-del-btn" onclick={() => editImageUrl = undefined} aria-label="画像を削除">✕</button>
+            </div>
+          {/if}
+          <button class="btn btn-ghost btn-sm img-add-btn" onclick={() => imgFileInput.click()}>🖼 画像{editImageUrl ? '変更' : '追加'}</button>
+          <input bind:this={imgFileInput} type="file" accept="image/*" style="display:none" onchange={handleImageFile} />
+        </div>
       </div>
       <div class="fs-footer">
         <input
@@ -998,6 +1025,14 @@
         <button class="btn btn-primary btn-sm" onclick={saveEdit}>保存</button>
       </div>
     </div>
+  </div>
+{/if}
+
+{#if viewImageUrl}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="img-viewer-overlay" onclick={() => viewImageUrl = null}>
+    <img class="img-viewer-img" src={viewImageUrl} alt="拡大表示" onclick={(e) => e.stopPropagation()} />
+    <button class="img-viewer-close" onclick={() => viewImageUrl = null} aria-label="閉じる">✕</button>
   </div>
 {/if}
 
@@ -1044,6 +1079,19 @@
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }
   .tmpl-item   { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text); font-family: inherit }
   .tmpl-item:hover { background: var(--surface2) }
+
+  .img-section     { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 10px; flex-wrap: wrap }
+  .img-thumb-wrap  { position: relative; display: inline-flex }
+  .img-thumb       { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: pointer }
+  .img-thumb:hover { opacity: .85 }
+  .img-del-btn     { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted) }
+  .img-del-btn:hover { color: var(--danger, #e55) }
+  .img-add-btn     { flex-shrink: 0 }
+  .card-thumb      { display: block; width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; margin-top: 8px; cursor: pointer }
+  .img-viewer-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .img-viewer-img  { max-width: 100%; max-height: 90vh; border-radius: 8px; object-fit: contain }
+  .img-viewer-close { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center }
+  .img-viewer-close:hover { background: rgba(255,255,255,.3) }
 
 </style>
 

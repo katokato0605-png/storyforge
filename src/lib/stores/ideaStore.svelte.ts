@@ -38,7 +38,7 @@ export const ideaStore = {
     return idea
   },
 
-  async update(id: string, patch: Partial<Pick<Idea, 'title' | 'content' | 'tags' | 'linkedProjectId'>>) {
+  async update(id: string, patch: Partial<Pick<Idea, 'title' | 'content' | 'tags' | 'linkedProjectId' | 'imageUrl'>>) {
     await db.ideas.update(id, patch)
     ideas = ideas.map(i => i.id === id ? { ...i, ...patch } : i)
   },

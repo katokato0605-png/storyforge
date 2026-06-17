@@ -40,6 +40,9 @@ const IdeaSchema = v.object({
   tags: v.array(v.string()),
   linkedProjectId: v.nullable(v.string()),
   createdAt: v.number(),
+  isTrash: v.optional(v.boolean()),
+  deletedAt: v.optional(v.number()),
+  // imageUrl はサイズが大きいため同期対象外（デバイスローカルのみ）
 })
 
 const LoreEntrySchema = v.object({
@@ -142,7 +145,13 @@ export async function importFromJSON(json: string): Promise<{ projects: number; 
       if (data.projects.length)     await db.projects.bulkPut(data.projects)
       if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
       if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
-      if (data.ideas.length)        await db.ideas.bulkPut(data.ideas)
+      if (data.ideas.length) {
+        // imageUrl はエクスポートに含まれないため、既存の imageUrl を保持してマージ
+        for (const incoming of data.ideas) {
+          const existing = await db.ideas.get(incoming.id)
+          await db.ideas.put(existing ? { ...existing, ...incoming } : incoming)
+        }
+      }
       if (data.loreEntries.length)  await db.loreEntries.bulkPut(data.loreEntries)
       if (data.diagramData && data.diagramData.length) await db.diagrams.bulkPut(data.diagramData as DiagramData[])
     })
@@ -157,7 +166,12 @@ export async function importFromJSON(json: string): Promise<{ projects: number; 
       if (data.projects.length)     await db.projects.bulkPut(data.projects)
       if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
       if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
-      if (data.ideas.length)        await db.ideas.bulkPut(data.ideas)
+      if (data.ideas.length) {
+        for (const incoming of data.ideas) {
+          const existing = await db.ideas.get(incoming.id)
+          await db.ideas.put(existing ? { ...existing, ...incoming } : incoming)
+        }
+      }
       if (data.loreEntries.length)  await db.loreEntries.bulkPut(data.loreEntries)
     })
     return { projects: data.projects.length, chapters: data.chapters.length, lore: data.loreEntries.length }

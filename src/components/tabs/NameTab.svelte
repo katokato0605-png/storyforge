@@ -6,7 +6,6 @@
   import { createHistory } from '../../lib/utils/history.svelte'
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
-  import ImageGallery from '../ui/ImageGallery.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
 
   const epDs = createDragSort()
@@ -981,7 +980,6 @@
         {/if}
       </div>
     {/if}
-    <ImageGallery projectId={projectStore.currentProjectId} tabId="name" />
   </div>
 {/if}
 

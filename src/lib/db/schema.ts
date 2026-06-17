@@ -39,6 +39,7 @@ export interface Idea {
   createdAt: number
   isTrash?: boolean
   deletedAt?: number
+  imageUrl?: string
 }
 
 export type LoreType = 'character' | 'world' | 'lore'

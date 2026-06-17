@@ -55,6 +55,7 @@ export const noteStore = {
       updated.set(type, note)
       noteMap = updated
     }
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   invalidate() {

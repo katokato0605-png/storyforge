@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { exportAll, importFromJSON } from './exportImport'
 
@@ -26,6 +26,31 @@ export async function cloudExists(userId: string): Promise<boolean> {
   if (!db) return false
   const snap = await getDoc(doc(db, 'syncs', userId))
   return snap.exists()
+}
+
+/**
+ * Firestore のリアルタイムリスナーを張り、別デバイスが push した際に
+ * onRemoteChange を呼ぶ。自分の push による変化は ownUpdatedAt より古ければ無視。
+ * 返り値は unsubscribe 関数。
+ */
+export function watchSync(
+  userId: string,
+  onRemoteChange: (updatedAt: string) => void,
+  getOwnLastPushedAt: () => string | null,
+): () => void {
+  if (!db) return () => {}
+  const docRef = doc(db, 'syncs', userId)
+  let initialized = false
+  const unsub = onSnapshot(docRef, (snap) => {
+    if (!snap.exists()) return
+    const { updated_at } = snap.data() as { updated_at: string }
+    if (!initialized) { initialized = true; return }
+    const own = getOwnLastPushedAt()
+    // own push から2秒以内の変化は無視（自分の push による echo）
+    if (own && new Date(updated_at).getTime() <= new Date(own).getTime() + 2000) return
+    onRemoteChange(updated_at)
+  })
+  return unsub
 }
 
 export async function pullSync(userId: string): Promise<{ projects: number; chapters: number }> {

@@ -67,6 +67,7 @@ export const chapterStore = {
     await db.chapters.update(id, { content, wordCount, updatedAt })
     chapters = chapters.map(c => c.id === id ? { ...c, content, wordCount, updatedAt } : c)
     isDirty = false
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   markDirty() { isDirty = true },

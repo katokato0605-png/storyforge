@@ -30,6 +30,7 @@ export const loreStore = {
     const entry: LoreEntry = { id: nanoid(), projectId, type, title, content, tags, createdAt: now, updatedAt: now }
     await db.loreEntries.put(entry)
     entries = [entry, ...entries]
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
     return entry
   },
 
@@ -37,10 +38,12 @@ export const loreStore = {
     const now = Date.now()
     await db.loreEntries.update(id, { ...patch, updatedAt: now })
     entries = entries.map(e => e.id === id ? { ...e, ...patch, updatedAt: now } : e)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async delete(id: string) {
     await db.loreEntries.delete(id)
     entries = entries.filter(e => e.id !== id)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 }

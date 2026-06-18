@@ -31,6 +31,7 @@ export const projectStore = {
     const project: Project = { id: nanoid(), title, description, createdAt: now, updatedAt: now }
     await db.projects.put(project)
     projects = [project, ...projects]
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
     return project
   },
 
@@ -38,6 +39,7 @@ export const projectStore = {
     const now = Date.now()
     await db.projects.update(id, { ...patch, updatedAt: now })
     projects = projects.map(p => p.id === id ? { ...p, ...patch, updatedAt: now } : p)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async deleteProject(id: string) {

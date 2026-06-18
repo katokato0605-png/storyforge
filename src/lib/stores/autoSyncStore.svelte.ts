@@ -57,7 +57,7 @@ async function runPull(uid: string) {
 
 function schedulePush(uid: string) {
   if (pushDebounceTimer) clearTimeout(pushDebounceTimer)
-  pushDebounceTimer = setTimeout(() => runPush(uid), 10_000)
+  pushDebounceTimer = setTimeout(() => runPush(uid), 1_000)
 }
 
 async function onLogin(user: User) {

@@ -35,28 +35,33 @@ export const ideaStore = {
     const idea: Idea = { id: nanoid(), title, content, tags, linkedProjectId, createdAt: Date.now() }
     await db.ideas.put(idea)
     ideas = [idea, ...ideas]
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
     return idea
   },
 
   async update(id: string, patch: Partial<Pick<Idea, 'title' | 'content' | 'tags' | 'linkedProjectId' | 'imageUrl'>>) {
     await db.ideas.update(id, patch)
     ideas = ideas.map(i => i.id === id ? { ...i, ...patch } : i)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async trash(id: string) {
     const deletedAt = Date.now()
     await db.ideas.update(id, { isTrash: true, deletedAt })
     ideas = ideas.map(i => i.id === id ? { ...i, isTrash: true, deletedAt } : i)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async restore(id: string) {
     await db.ideas.where('id').equals(id).modify(i => { i.isTrash = false; delete i.deletedAt })
     ideas = ideas.map(i => i.id === id ? { ...i, isTrash: false, deletedAt: undefined } : i)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async delete(id: string) {
     await db.ideas.delete(id)
     ideas = ideas.filter(i => i.id !== id)
+    window.dispatchEvent(new CustomEvent('sf:dirty'))
   },
 
   async reload() {

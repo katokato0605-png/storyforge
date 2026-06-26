@@ -876,47 +876,34 @@
         {:else}
           <div class="nt-idea-list">
             {#each sceneIdeas as idea (idea.id)}
-              <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-              <div class="nt-idea-card" class:editing={ideaEditId === idea.id} onclick={() => ideaEditId !== idea.id && startIdeaEdit(idea)}>
-                {#if ideaEditId === idea.id}
-                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-                  <div onclick={(e) => e.stopPropagation()} style="display:contents">
+              <div class="nt-idea-card">
+                <div class="nt-idea-card-top">
                   <input
                     class="fi nt-idea-title-edit"
-                    bind:value={ideaEditTitle}
+                    value={idea.title ?? ''}
+                    oninput={(e) => ideaStore.update(idea.id, { title: (e.target as HTMLInputElement).value })}
                     placeholder="タイトル"
                   />
-                  <textarea
-                    class="fta nt-idea-ta"
-                    bind:value={ideaEditContent}
-                    placeholder="内容"
-                  ></textarea>
-                  <input
-                    class="fi nt-idea-tags-input"
-                    bind:value={ideaEditTags}
-                    placeholder="タグ（カンマ区切り）"
-                  />
-                  <div class="nt-idea-form-acts">
-                    <button class="btn btn-primary btn-sm" onclick={saveIdeaEdit}>保存</button>
-                    <button class="btn btn-ghost btn-sm" onclick={() => ideaEditId = null}>キャンセル</button>
+                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+                  <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
+                    <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
                   </div>
-                  </div>
-                {:else}
-                  <div class="nt-idea-card-top">
-                    {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
-                    <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
-                      <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
-                    </div>
-                  </div>
-                  {#if idea.content}
-                    <div class="nt-idea-content">{idea.content}</div>
-                  {/if}
-                  <div class="nt-idea-tags">
-                    {#each idea.tags as tag}
-                      <span class="nt-tag-badge">{tag}</span>
-                    {/each}
-                  </div>
-                {/if}
+                </div>
+                <textarea
+                  class="fta nt-idea-ta"
+                  value={idea.content}
+                  oninput={(e) => ideaStore.update(idea.id, { content: (e.target as HTMLTextAreaElement).value })}
+                  placeholder="内容"
+                ></textarea>
+                <input
+                  class="fi nt-idea-tags-input"
+                  value={idea.tags.join(', ')}
+                  oninput={(e) => {
+                    const tags = (e.target as HTMLInputElement).value.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+                    ideaStore.update(idea.id, { tags })
+                  }}
+                  placeholder="タグ（カンマ区切り）"
+                />
               </div>
             {/each}
           </div>
@@ -1129,10 +1116,9 @@
   .nt-idea-card {
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); overflow: hidden; transition: border-color .15s;
-    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   }
   .nt-idea-card:hover { border-color: var(--accent) }
-  .nt-idea-card.editing { border-color: var(--accent); padding: 12px 14px; gap: 8px; cursor: default }
   .nt-idea-card-top { display: flex; align-items: flex-start; gap: 8px }
   .nt-idea-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text) }
   .nt-idea-title-edit { font-size: 14px; font-weight: 700 }

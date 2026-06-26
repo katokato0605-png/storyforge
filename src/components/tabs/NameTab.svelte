@@ -776,10 +776,8 @@
                 <div class="nt-empty">ビートがありません。「＋ ビート」またはテンプレートから追加できます。</div>
               {:else}
                 {#each selectedChapter.beats as beat, idx (beat.id)}
-                  <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
                   <div
-                    class="nt-scene-card"
-                    class:editing={beatEditId === beat.id}
+                    class="nt-beat-card"
                     class:dragging={beatDs.dragIdx === idx}
                     class:drag-over={beatDs.dragOverIdx === idx}
                     draggable="true"
@@ -791,48 +789,36 @@
                     ontouchstart={() => beatDs.touchstart(idx)}
                     ontouchmove={(e) => beatDs.touchmove(e)}
                     ontouchend={() => { const to = beatDs.dragOverIdx; if (to !== null) dragBeat(selectedChapter!.id, to); else beatDs.end() }}
-                    onclick={() => beatEditId = beatEditId === beat.id ? null : beat.id}
                   >
-                    <div class="nt-scene-top">
+                    <div class="nt-beat-card-top">
                       <span class="drag-handle-sm scene-drag">⠿</span>
-                      <div class="nt-beat-labels">
-                        {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
-                        <span class="nt-beat-title">{beat.title || '（タイトル未設定）'}</span>
+                      <div class="nt-beat-card-fields">
+                        <div class="nt-beat-card-row">
+                          <input
+                            class="fi nt-beat-stage-input"
+                            value={beat.stage}
+                            oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { stage: (e.target as HTMLInputElement).value })}
+                            placeholder="幕・段階"
+                          />
+                          <input
+                            class="fi nt-beat-title-input"
+                            value={beat.title}
+                            oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { title: (e.target as HTMLInputElement).value })}
+                            placeholder="ビートタイトル"
+                          />
+                        </div>
+                        <textarea
+                          class="fta nt-beat-memo"
+                          value={beat.memo}
+                          oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { memo: (e.target as HTMLTextAreaElement).value })}
+                          placeholder="メモ・詳細"
+                        ></textarea>
                       </div>
+                      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
                       <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                         <button class="iBtn del" onclick={() => deleteBeat(selectedChapter!.id, beat.id)}>🗑</button>
                       </div>
                     </div>
-
-                    {#if beatEditId === beat.id}
-                      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-                      <div onclick={(e) => e.stopPropagation()} style="display:contents">
-                      <input
-                        class="fi"
-                        value={beat.stage}
-                        oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { stage: (e.target as HTMLInputElement).value })}
-                        placeholder="幕・段階"
-                      />
-                      <input
-                        class="fi"
-                        value={beat.title}
-                        oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { title: (e.target as HTMLInputElement).value })}
-                        placeholder="ビートタイトル"
-                      />
-                      <textarea
-                        class="fta nt-scene-memo"
-                        value={beat.memo}
-                        oninput={(e) => updateBeat(selectedChapter!.id, beat.id, { memo: (e.target as HTMLTextAreaElement).value })}
-                        placeholder="メモ・詳細"
-                      ></textarea>
-                      </div>
-                    {:else}
-                      {#if beat.memo}
-                        <div class="nt-scene-preview">{beat.memo}</div>
-                      {:else}
-                        <div class="nt-scene-empty">（メモなし）</div>
-                      {/if}
-                    {/if}
                   </div>
                 {/each}
               {/if}
@@ -1073,9 +1059,21 @@
   .nt-scene-dlg { width: 100%; min-height: 60px; resize: vertical; font-size: 12px; line-height: 1.6; border-radius: 0; border: none }
   .nt-dlg-preview { padding: 4px 12px 8px; font-size: 12px; color: var(--accent); white-space: pre-wrap }
 
-  /* Chapter beats */
-  .nt-beat-labels { display: flex; align-items: center; gap: 8px; flex: 1 }
-  .nt-beat-title { font-size: 13px; font-weight: 600; color: var(--text) }
+  /* Chapter beats (always-editable cards) */
+  .nt-beat-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); margin-bottom: 8px;
+    overflow: hidden; transition: border-color .15s, opacity .12s;
+  }
+  .nt-beat-card:hover { border-color: var(--accent) }
+  .nt-beat-card.dragging { opacity: 0.35 }
+  .nt-beat-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent) }
+  .nt-beat-card-top { display: flex; align-items: flex-start; gap: 6px; padding: 8px 10px }
+  .nt-beat-card-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+  .nt-beat-card-row { display: flex; gap: 6px }
+  .nt-beat-stage-input { width: 100px; flex-shrink: 0; font-size: 12px }
+  .nt-beat-title-input { flex: 1; font-size: 13px; font-weight: 600 }
+  .nt-beat-memo { width: 100%; min-height: 70px; resize: vertical; font-size: 13px; line-height: 1.7; border-radius: 6px; border: 1px solid var(--border); padding: 6px 8px; background: var(--surface2) }
   .pb-stage-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--accent); color: #fff }
 
   /* Chapter toolbar */

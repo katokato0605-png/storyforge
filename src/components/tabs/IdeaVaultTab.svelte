@@ -24,6 +24,10 @@
 
   const TEMPLATES_LIST = [
     {
+      label: '物語パラダイム表（図）',
+      content: PARADIGM_TABLE_HTML,
+    },
+    {
       label: '物語力学：感情変位と達成率',
       content: `物語力学：連動する感情変位と達成率
 出典：お絵描きホーホー論
@@ -678,7 +682,49 @@
     },
   ]
 
+  const PARADIGM_TABLE_HTML = `<table class="sf-paradigm-table"><thead><tr><th>パート</th><th>時系列</th><th>機能</th><th>シーン</th><th>副機能（プロット）</th></tr></thead><tbody>
+<tr><td rowspan="12" class="sf-part-cell">第一幕<br><span class="sf-sub">（テーゼ・旧世界）</span></td><td rowspan="5" class="sf-time-cell">日常</td><td rowspan="3" class="sf-func-cell">OPイメージ</td><td class="sf-scene-cell">作品トーン</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">キャラの願望</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">ビジュアル</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="2" class="sf-func-cell">セットアップ</td><td class="sf-scene-cell">世界観設定</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">主人公に欠如するもの</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="4" class="sf-time-cell">事件</td><td rowspan="2" class="sf-func-cell">テーマの提示</td><td class="sf-scene-cell">物語の方向性</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">何をすべきかという真実</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="2" class="sf-func-cell">触媒・きっかけ<br><span class="sf-sub">（Inciting Incident）</span></td><td class="sf-scene-cell">変化の瞬間</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">以前にない変化</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="3" class="sf-time-cell">決意</td><td rowspan="2" class="sf-func-cell">葛藤・熟慮<br><span class="sf-sub">（Key Incident）</span></td><td class="sf-scene-cell">変化へのためらい</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">チキンからヒーローになる決断</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-func-cell">ブレイク</td><td class="sf-scene-cell">非日常への突入</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="16" class="sf-part-cell">第二幕<br><span class="sf-sub">（アンチテーゼ・異世界）</span></td><td class="sf-time-cell">助走</td><td class="sf-func-cell">サブプロット</td><td class="sf-scene-cell">メインから離れたエピソード</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="7" class="sf-time-cell">成長</td><td rowspan="3" class="sf-func-cell">自然な・自発的な出来事<br><span class="sf-sub">（Spontaneous Incident）</span></td><td class="sf-scene-cell">主人公らしく鍵を握る</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">世界観の背景描写</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">ジレンマ</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="4" class="sf-func-cell">中間点<br><span class="sf-sub">（Fake Ending）</span></td><td class="sf-scene-cell">サービスシーン</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">人間関係の錯交</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">一時決着</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">物語の流れが変わる</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="7" class="sf-time-cell">情動</td><td rowspan="2" class="sf-func-cell">最後の試練<br>どんでん返し</td><td class="sf-scene-cell">主人公の全てを否定する攻撃</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">主人公置いてけぼり</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="2" class="sf-func-cell">全てを失う・得る瞬間<br><span class="sf-sub">（Desperate Incident）</span></td><td class="sf-scene-cell">物語の原動力を奪われる</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">大物から無力を念押しされる</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="3" class="sf-func-cell">魂の沈む・輝く夜</td><td class="sf-scene-cell">失意の時間を描く</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">最も大切なものを選ぶ</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">物語の情報公開</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-time-cell">変化</td><td class="sf-func-cell">侵入・撤退</td><td class="sf-scene-cell">再起</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td rowspan="3" class="sf-part-cell">第三幕<br><span class="sf-sub">（ジンテーゼ・新世界）</span></td><td rowspan="2" class="sf-time-cell">結末</td><td rowspan="2" class="sf-func-cell">クライマックス</td><td class="sf-scene-cell">見せ場</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-scene-cell">決着</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+<tr><td class="sf-time-cell">余韻</td><td class="sf-func-cell">EDイメージ</td><td class="sf-scene-cell">OPの反対の状況を視覚的に証明</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
+</tbody></table>`
+
   const isInProject = $derived(!!projectStore.currentProjectId)
+
+  function isDiagram(content: string) {
+    return content.trimStart().startsWith('<table')
+  }
+
+  function diagramPreview(content: string) {
+    return content.replace(/contenteditable="true"/g, 'contenteditable="false"')
+  }
 
   function toggleScene(tags: string, set: (v: string) => void) {
     const arr = tags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
@@ -700,6 +746,13 @@
   let editImageUrl = $state<string | undefined>(undefined)
   let viewImageUrl = $state<string | null>(null)
   let imgFileInput: HTMLInputElement
+  let diagramRef = $state<HTMLElement | null>(null)
+
+  $effect(() => {
+    if (diagramRef && isDiagram(editContent)) {
+      diagramRef.innerHTML = editContent
+    }
+  })
 
   function startEdit(idea: { id: string; title: string; content: string; tags: string[]; imageUrl?: string }) {
     editId = idea.id
@@ -711,10 +764,13 @@
 
   async function saveEdit() {
     if (!editId) return
+    const content = isDiagram(editContent) && diagramRef
+      ? diagramRef.innerHTML
+      : editContent.trim()
     const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
     const linkedProjectId = matchedProject?.id ?? null
-    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, linkedProjectId, imageUrl: editImageUrl })
+    await ideaStore.update(editId, { title: editTitle.trim(), content, tags, linkedProjectId, imageUrl: editImageUrl })
     editId = null
   }
 
@@ -936,7 +992,11 @@
             <div class="idea-title">{idea.title}</div>
           {/if}
           {#if idea.content}
-            <p class="idea-text">{idea.content}</p>
+            {#if isDiagram(idea.content)}
+              <div class="diagram-preview">{@html diagramPreview(idea.content)}</div>
+            {:else}
+              <p class="idea-text">{idea.content}</p>
+            {/if}
           {/if}
           {#if idea.tags.length > 0}
             <div class="tags">
@@ -978,14 +1038,25 @@
         <button class="iBtn fs-close" onclick={() => editId = null} aria-label="閉じる">✕</button>
       </div>
       <div class="fs-body">
-        <textarea
-          class="fta fs-textarea"
-          value={editContent}
-          oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
-          onkeydown={handleEditKeydown}
-          placeholder="詳細（Ctrl+Enter で保存）"
-          aria-label="詳細"
-        ></textarea>
+        {#if isDiagram(editContent)}
+          {#key editId}
+            <div
+              class="diagram-editor"
+              bind:this={diagramRef}
+              role="region"
+              aria-label="パラダイム図（編集可能）"
+            ></div>
+          {/key}
+        {:else}
+          <textarea
+            class="fta fs-textarea"
+            value={editContent}
+            oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
+            onkeydown={handleEditKeydown}
+            placeholder="詳細（Ctrl+Enter で保存）"
+            aria-label="詳細"
+          ></textarea>
+        {/if}
         <div class="img-section">
           {#if editImageUrl}
             <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -1092,6 +1163,69 @@
   .img-viewer-img  { max-width: 100%; max-height: 90vh; border-radius: 8px; object-fit: contain }
   .img-viewer-close { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center }
   .img-viewer-close:hover { background: rgba(255,255,255,.3) }
+
+  .diagram-preview { overflow: auto; max-height: 200px; margin-top: 4px; pointer-events: none }
+  .diagram-editor  { flex: 1; overflow: auto; min-height: 0 }
+
+  :global(.sf-paradigm-table) {
+    border-collapse: collapse;
+    font-size: 11px;
+    width: 100%;
+    min-width: 540px;
+    table-layout: auto;
+  }
+  :global(.sf-paradigm-table th) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 5px 7px;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  :global(.sf-paradigm-table td) {
+    border: 1px solid var(--border);
+    padding: 4px 7px;
+    vertical-align: middle;
+    color: var(--text);
+  }
+  :global(.sf-part-cell) {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  :global(.sf-time-cell) {
+    background: var(--surface2);
+    text-align: center;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  :global(.sf-func-cell) {
+    background: color-mix(in srgb, var(--surface2) 60%, var(--surface));
+    text-align: center;
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+  :global(.sf-scene-cell) {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  :global(.sf-edit-cell) {
+    background: var(--surface);
+    min-width: 120px;
+    outline: none;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 4px 7px;
+    cursor: text;
+  }
+  :global(.sf-edit-cell[contenteditable="true"]:focus) {
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    outline: 1px solid var(--accent);
+  }
+  :global(.sf-sub) { font-size: 9.5px; font-weight: 400; display: block }
 
 </style>
 

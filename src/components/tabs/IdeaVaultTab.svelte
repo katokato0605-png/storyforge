@@ -714,6 +714,7 @@
   let viewImageUrl = $state<string | null>(null)
   let imgFileInput: HTMLInputElement
   let diagramRef = $state<HTMLElement | null>(null)
+  let newDiagramRef = $state<HTMLElement | null>(null)
 
   $effect(() => {
     // editId の変化時のみ innerHTML を初期化（editContent の変化で再実行しない）
@@ -723,6 +724,13 @@
         diagramRef.innerHTML = editContent
       }
     })
+  })
+
+  $effect(() => {
+    // newDiagramRef が DOM にバインドされたタイミングで innerHTML を設定
+    if (newDiagramRef && isDiagram(untrack(() => newContent))) {
+      newDiagramRef.innerHTML = untrack(() => newContent)
+    }
   })
 
   function startEdit(idea: { id: string; title: string; content: string; tags: string[]; imageUrl?: string }) {
@@ -797,7 +805,10 @@
     const tags = newTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
     const linkedProjectId = matchedProject ? matchedProject.id : (projectStore.currentProjectId ?? null)
-    await ideaStore.create(newTitle.trim(), newContent.trim(), tags, linkedProjectId)
+    const content = isDiagram(newContent) && newDiagramRef
+      ? newDiagramRef.innerHTML
+      : newContent.trim()
+    await ideaStore.create(newTitle.trim(), content, tags, linkedProjectId)
     newTitle = ''
     newContent = ''
     newTags = ''
@@ -900,15 +911,24 @@
         placeholder="タイトル"
         aria-label="タイトル"
       />
-      <textarea
-        class="fta"
-        value={newContent}
-        oninput={(e) => newContent = (e.target as HTMLTextAreaElement).value}
-        onkeydown={handleAddKeydown}
-        placeholder="詳細（任意）… (Ctrl+Enter で保存)"
-        rows="3"
-        aria-label="詳細"
-      ></textarea>
+      {#if isDiagram(newContent)}
+        <div
+          class="diagram-editor"
+          bind:this={newDiagramRef}
+          role="region"
+          aria-label="パラダイム図（編集可能）"
+        ></div>
+      {:else}
+        <textarea
+          class="fta"
+          value={newContent}
+          oninput={(e) => newContent = (e.target as HTMLTextAreaElement).value}
+          onkeydown={handleAddKeydown}
+          placeholder="詳細（任意）… (Ctrl+Enter で保存)"
+          rows="3"
+          aria-label="詳細"
+        ></textarea>
+      {/if}
       <div class="add-row">
         <input
           class="fi"

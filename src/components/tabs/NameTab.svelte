@@ -876,34 +876,23 @@
         {:else}
           <div class="nt-idea-list">
             {#each sceneIdeas as idea (idea.id)}
-              <div class="nt-idea-card">
+              <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+              <div class="nt-idea-card" onclick={() => startIdeaEdit(idea)}>
                 <div class="nt-idea-card-top">
-                  <input
-                    class="fi nt-idea-title-edit"
-                    value={idea.title ?? ''}
-                    oninput={(e) => ideaStore.update(idea.id, { title: (e.target as HTMLInputElement).value })}
-                    placeholder="タイトル"
-                  />
+                  {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
                   <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
                   <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                     <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
                   </div>
                 </div>
-                <textarea
-                  class="fta nt-idea-ta"
-                  value={idea.content}
-                  oninput={(e) => ideaStore.update(idea.id, { content: (e.target as HTMLTextAreaElement).value })}
-                  placeholder="内容"
-                ></textarea>
-                <input
-                  class="fi nt-idea-tags-input"
-                  value={idea.tags.join(', ')}
-                  oninput={(e) => {
-                    const tags = (e.target as HTMLInputElement).value.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
-                    ideaStore.update(idea.id, { tags })
-                  }}
-                  placeholder="タグ（カンマ区切り）"
-                />
+                {#if idea.content}
+                  <div class="nt-idea-content">{idea.content}</div>
+                {/if}
+                <div class="nt-idea-tags">
+                  {#each idea.tags as tag}
+                    <span class="nt-tag-badge">{tag}</span>
+                  {/each}
+                </div>
               </div>
             {/each}
           </div>
@@ -911,6 +900,38 @@
       </div>
     {/if}
   </div>
+
+  <!-- アイデア編集オーバーレイ -->
+  {#if ideaEditId}
+    <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+    <div class="nt-idea-overlay-bg" onclick={() => saveIdeaEdit()}></div>
+    <div class="nt-idea-overlay">
+      <div class="nt-idea-overlay-header">
+        <span class="nt-idea-overlay-title">アイデアを編集</span>
+        <button class="iBtn" onclick={() => saveIdeaEdit()}>✕</button>
+      </div>
+      <div class="nt-idea-overlay-body">
+        <input
+          class="fi nt-idea-title-edit"
+          bind:value={ideaEditTitle}
+          placeholder="タイトル（任意）"
+        />
+        <textarea
+          class="fta nt-idea-overlay-ta"
+          bind:value={ideaEditContent}
+          placeholder="内容"
+        ></textarea>
+        <input
+          class="fi nt-idea-tags-input"
+          bind:value={ideaEditTags}
+          placeholder="タグ（カンマ区切り）"
+        />
+      </div>
+      <div class="nt-idea-overlay-footer">
+        <button class="btn btn-primary" onclick={() => saveIdeaEdit()}>保存して閉じる</button>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -1116,9 +1137,35 @@
   .nt-idea-card {
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); overflow: hidden; transition: border-color .15s;
-    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
   }
   .nt-idea-card:hover { border-color: var(--accent) }
+
+  /* Idea edit overlay */
+  .nt-idea-overlay-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+  }
+  .nt-idea-overlay {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(600px, 95vw); max-height: 85vh;
+    background: var(--surface); border-radius: 14px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.3);
+    z-index: 101; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .nt-idea-overlay-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .nt-idea-overlay-title { font-size: 14px; font-weight: 700; color: var(--text) }
+  .nt-idea-overlay-body {
+    flex: 1; overflow-y: auto; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .nt-idea-overlay-ta { width: 100%; min-height: 200px; resize: vertical; font-size: 14px; line-height: 1.8 }
+  .nt-idea-overlay-footer {
+    padding: 12px 18px; border-top: 1px solid var(--border); flex-shrink: 0;
+    display: flex; justify-content: flex-end;
+  }
   .nt-idea-card-top { display: flex; align-items: flex-start; gap: 8px }
   .nt-idea-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text) }
   .nt-idea-title-edit { font-size: 14px; font-weight: 700 }

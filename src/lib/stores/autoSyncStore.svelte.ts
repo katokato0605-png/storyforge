@@ -15,6 +15,7 @@ let lastPushedAt: string | null = null
 let intervalId: ReturnType<typeof setInterval> | null = null
 let unsubWatch: (() => void) | null = null
 let pushDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let visibilityHandler: (() => void) | null = null
 
 async function reloadStores() {
   await projectStore.load()
@@ -87,6 +88,11 @@ async function onLogin(user: User) {
     () => lastPushedAt,
   )
 
+  // モバイルでバックグラウンド復帰時に pull（onSnapshot が切れる対策）
+  if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler)
+  visibilityHandler = () => { if (document.visibilityState === 'visible') runPull(user.uid) }
+  document.addEventListener('visibilitychange', visibilityHandler)
+
   // 定期 push（10秒デバウンスで push された分のバックアップ）
   if (intervalId) clearInterval(intervalId)
   intervalId = setInterval(() => runPush(user.uid), 60_000)
@@ -99,6 +105,7 @@ function onLogout() {
   if (intervalId) { clearInterval(intervalId); intervalId = null }
   unsubWatch?.(); unsubWatch = null
   if (pushDebounceTimer) { clearTimeout(pushDebounceTimer); pushDebounceTimer = null }
+  if (visibilityHandler) { document.removeEventListener('visibilitychange', visibilityHandler); visibilityHandler = null }
   status = 'idle'
   lastSyncedAt = null
   lastPushedAt = null

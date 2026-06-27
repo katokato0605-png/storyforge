@@ -39,6 +39,7 @@ let theme = $state<Theme>('dark')
 let activeModal = $state<string | null>(null)
 let modalProps = $state<unknown>(null)
 let status = $state<'idle' | 'ready'>('idle')
+let syncVersion = $state(0)
 
 export const appStore = {
   get tabs() { return tabs },
@@ -47,6 +48,8 @@ export const appStore = {
   get activeModal() { return activeModal },
   get modalProps() { return modalProps },
   get status() { return status },
+  get syncVersion() { return syncVersion },
+  bumpSyncVersion() { syncVersion++ },
 
   setTab(tab: TabId) { activeTab = tab },
   reorderTabs(next: TabDef[]) {

@@ -51,6 +51,7 @@
         await noteStore.load(pid)
       }
       await ideaStore.reload()
+      appStore.bumpSyncVersion()
       status = 'ok'
       message = `ダウンロード完了！${projects}作品・${chapters}章を取得しました`
     } catch (e) {

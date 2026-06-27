@@ -185,9 +185,10 @@
     projectStore.currentProjectId ? `sf_name_${projectStore.currentProjectId}` : null
   )
 
-  // Load on project change
+  // Load on project change or after sync pull
   $effect(() => {
     const key = storageKey
+    void appStore.syncVersion
     loaded = false
     if (!key) return
     let eps: Episode[] = []

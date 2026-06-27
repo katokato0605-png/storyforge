@@ -1224,6 +1224,9 @@
   :global(.sf-sub) { font-size: 9.5px; font-weight: 400; display: block }
 
   /* シナリオ概略表 */
+  :global(.sf-sc-wrap) { position: relative; display: block; width: 100%; min-width: 480px; }
+  :global(.sf-sc-arrows) { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  :global(.sf-sc-lbl) { position: absolute; pointer-events: none; font-size: 12px; font-weight: 700; transform: translate(-50%, -50%); white-space: nowrap; }
   :global(.sf-sc-table) { min-width: 480px }
   :global(.sf-sc-label) {
     background: var(--surface2);

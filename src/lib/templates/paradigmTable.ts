@@ -1,4 +1,4 @@
-export const SCENARIO_OUTLINE_TABLE_HTML = `<table class="sf-paradigm-table sf-sc-table"><thead><tr><th class="sf-sc-label">項目</th><th colspan="2">社会的な物語</th><th>精神的な物語</th></tr></thead><tbody>
+export const SCENARIO_OUTLINE_TABLE_HTML = `<div class="sf-sc-wrap"><table class="sf-paradigm-table sf-sc-table"><thead><tr><th class="sf-sc-label">項目</th><th colspan="2">社会的な物語</th><th>精神的な物語</th></tr></thead><tbody>
 <tr><td class="sf-sc-row">行動</td><td colspan="3" contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
 <tr><td class="sf-sc-row" rowspan="2">理由</td><td colspan="2" class="sf-sc-gaimen">外面</td><td class="sf-sc-honne">本音</td></tr>
 <tr><td contenteditable="true" class="sf-edit-cell sf-sc-tall" colspan="2"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
@@ -7,7 +7,26 @@ export const SCENARIO_OUTLINE_TABLE_HTML = `<table class="sf-paradigm-table sf-s
 <tr><td class="sf-sc-row" rowspan="2">対策</td><td class="sf-sc-cnt">②決断</td><td class="sf-sc-cnt">④一時決着</td><td class="sf-sc-cnt">⑥決着</td></tr>
 <tr><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
 <tr><td class="sf-sc-row">結末</td><td colspan="3" contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
-</tbody></table>`
+</tbody></table>
+<svg class="sf-sc-arrows" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+<line x1="27" y1="36" x2="83" y2="45" stroke="#d06040" stroke-width="0.6"/>
+<line x1="83" y1="45" x2="79" y2="42" stroke="#d06040" stroke-width="0.6"/>
+<line x1="83" y1="45" x2="79" y2="48" stroke="#d06040" stroke-width="0.6"/>
+<line x1="24" y1="57" x2="24" y2="66" stroke="#408050" stroke-width="0.6"/>
+<line x1="24" y1="66" x2="21" y2="62" stroke="#408050" stroke-width="0.6"/>
+<line x1="24" y1="66" x2="27" y2="62" stroke="#408050" stroke-width="0.6"/>
+<line x1="54" y1="57" x2="26" y2="66" stroke="#7050b0" stroke-width="0.6"/>
+<line x1="26" y1="66" x2="29" y2="62" stroke="#7050b0" stroke-width="0.6"/>
+<line x1="26" y1="66" x2="28" y2="67" stroke="#7050b0" stroke-width="0.6"/>
+<line x1="55" y1="79" x2="55" y2="90" stroke="#4070b0" stroke-width="0.6"/>
+<line x1="55" y1="90" x2="52" y2="86" stroke="#4070b0" stroke-width="0.6"/>
+<line x1="55" y1="90" x2="58" y2="86" stroke="#4070b0" stroke-width="0.6"/>
+</svg>
+<span class="sf-sc-lbl" style="top:38%;left:56%;color:#d06040">試練</span>
+<span class="sf-sc-lbl" style="top:62%;left:14%;color:#408050">解決</span>
+<span class="sf-sc-lbl" style="top:59%;left:39%;color:#7050b0">否定</span>
+<span class="sf-sc-lbl" style="top:85%;left:62%;color:#4070b0">選択</span>
+</div>`
 
 export const PARADIGM_TABLE_HTML = `<table class="sf-paradigm-table"><thead><tr><th>パート</th><th>時系列</th><th>機能</th><th>シーン</th><th>副機能（プロット）</th></tr></thead><tbody>
 <tr><td rowspan="12" class="sf-part-cell">第一幕<br><span class="sf-sub">（テーゼ・旧世界）</span></td><td rowspan="5" class="sf-time-cell">日常</td><td rowspan="3" class="sf-func-cell">OPイメージ</td><td class="sf-scene-cell">作品トーン</td><td contenteditable="true" class="sf-edit-cell"></td></tr>

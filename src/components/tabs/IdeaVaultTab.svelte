@@ -1107,6 +1107,7 @@
   .linked-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none }
   .add-form    { padding: 14px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface2) }
   .add-form .fta { margin-bottom: 8px }
+  .add-form .diagram-editor { max-height: 45vh; flex: none; }
   .add-row     { display: flex; gap: 8px; align-items: center }
   .add-row .fi { flex: 1 }
   .idea-list   { flex: 1; overflow-y: scroll; overflow-x: hidden; padding: 12px 20px }

@@ -690,7 +690,8 @@
   const isInProject = $derived(!!projectStore.currentProjectId)
 
   function isDiagram(content: string) {
-    return content.trimStart().startsWith('<table')
+    const trimmed = content.trimStart()
+    return trimmed.startsWith('<table') || trimmed.startsWith('<div class="sf-sc-wrap')
   }
 
   function diagramPreview(content: string) {

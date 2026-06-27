@@ -1,5 +1,6 @@
 import * as v from 'valibot'
 import { db } from '../db/database'
+import type { DiagramData } from '../db/schema'
 
 // ---- valibot schemas ----
 
@@ -39,6 +40,9 @@ const IdeaSchema = v.object({
   tags: v.array(v.string()),
   linkedProjectId: v.nullable(v.string()),
   createdAt: v.number(),
+  isTrash: v.optional(v.boolean()),
+  deletedAt: v.optional(v.number()),
+  // imageUrl はサイズが大きいため同期対象外（デバイスローカルのみ）
 })
 
 const LoreEntrySchema = v.object({
@@ -52,12 +56,34 @@ const LoreEntrySchema = v.object({
   updatedAt: v.number(),
 })
 
+const DiagramDataSchema = v.object({
+  id: v.string(),
+  projectId: v.string(),
+  diagrams: v.unknown(),
+  nodes: v.record(v.string(), v.array(v.unknown())),
+  edges: v.record(v.string(), v.array(v.unknown())),
+  updatedAt: v.number(),
+})
+
 const MetaEntrySchema = v.object({
   key: v.string(),
   value: v.unknown(),
 })
 
 const ExportDataSchema = v.object({
+  version: v.literal(5),
+  exportedAt: v.number(),
+  projects: v.array(ProjectSchema),
+  chapters: v.array(ChapterSchema),
+  projectNotes: v.array(ProjectNoteSchema),
+  ideas: v.array(IdeaSchema),
+  loreEntries: v.array(LoreEntrySchema),
+  diagramData: v.optional(v.array(DiagramDataSchema), []),
+  metaEntries: v.optional(v.array(MetaEntrySchema), []),
+})
+
+// v4 (legacy) — no diagrams, no metaEntries
+const ExportDataSchemaV4 = v.object({
   version: v.literal(4),
   exportedAt: v.number(),
   projects: v.array(ProjectSchema),
@@ -65,7 +91,6 @@ const ExportDataSchema = v.object({
   projectNotes: v.array(ProjectNoteSchema),
   ideas: v.array(IdeaSchema),
   loreEntries: v.array(LoreEntrySchema),
-  metaEntries: v.optional(v.array(MetaEntrySchema), []),
 })
 
 // v3 (legacy) — loreEntries absent
@@ -84,21 +109,22 @@ type MetaEntry = v.InferOutput<typeof MetaEntrySchema>
 // ---- public API ----
 
 export async function exportAll(): Promise<string> {
-  const [projects, chapters, projectNotes, ideas, loreEntries, allMeta] = await Promise.all([
+  const [projects, chapters, projectNotes, ideas, loreEntries, diagramData, allMeta] = await Promise.all([
     db.projects.toArray(),
     db.chapters.toArray(),
     db.projectNotes.toArray(),
     db.ideas.toArray(),
     db.loreEntries.toArray(),
+    db.diagrams.toArray(),
     db.meta.toArray(),
   ])
   const metaEntries: MetaEntry[] = allMeta
     .filter(m => typeof m.key === 'string' && m.key.startsWith('sf_name_'))
     .map(m => ({ key: m.key, value: m.value }))
   const data: ExportData = {
-    version: 4,
+    version: 5,
     exportedAt: Date.now(),
-    projects, chapters, projectNotes, ideas, loreEntries, metaEntries,
+    projects, chapters, projectNotes, ideas, loreEntries, diagramData, metaEntries,
   }
   return JSON.stringify(data, null, 2)
 }
@@ -122,17 +148,43 @@ export async function importFromJSON(json: string): Promise<{ projects: number; 
     throw new Error('JSONの解析に失敗しました')
   }
 
-  // v4 を試し、失敗したら v3 にフォールバック
-  const v4 = v.safeParse(ExportDataSchema, parsed)
-  if (v4.success) {
-    const data = v4.output
-    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas, db.loreEntries, db.meta], async () => {
+  // v5 (current - includes diagrams + metaEntries)
+  const v5 = v.safeParse(ExportDataSchema, parsed)
+  if (v5.success) {
+    const data = v5.output
+    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas, db.loreEntries, db.diagrams, db.meta], async () => {
       if (data.projects.length)     await db.projects.bulkPut(data.projects)
       if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
       if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
-      if (data.ideas.length)        await db.ideas.bulkPut(data.ideas)
+      if (data.ideas.length) {
+        // imageUrl はエクスポートに含まれないため、既存の imageUrl を保持してマージ
+        for (const incoming of data.ideas) {
+          const existing = await db.ideas.get(incoming.id)
+          await db.ideas.put(existing ? { ...existing, ...incoming } : incoming)
+        }
+      }
       if (data.loreEntries.length)  await db.loreEntries.bulkPut(data.loreEntries)
-      if (data.metaEntries?.length) await db.meta.bulkPut(data.metaEntries)
+      if (data.diagramData && data.diagramData.length) await db.diagrams.bulkPut(data.diagramData as DiagramData[])
+      if (data.metaEntries && data.metaEntries.length) await db.meta.bulkPut(data.metaEntries)
+    })
+    return { projects: data.projects.length, chapters: data.chapters.length, lore: data.loreEntries.length }
+  }
+
+  // v4 fallback (no diagrams, no metaEntries)
+  const r4 = v.safeParse(ExportDataSchemaV4, parsed)
+  if (r4.success) {
+    const data = r4.output
+    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas, db.loreEntries], async () => {
+      if (data.projects.length)     await db.projects.bulkPut(data.projects)
+      if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
+      if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
+      if (data.ideas.length) {
+        for (const incoming of data.ideas) {
+          const existing = await db.ideas.get(incoming.id)
+          await db.ideas.put(existing ? { ...existing, ...incoming } : incoming)
+        }
+      }
+      if (data.loreEntries.length)  await db.loreEntries.bulkPut(data.loreEntries)
     })
     return { projects: data.projects.length, chapters: data.chapters.length, lore: data.loreEntries.length }
   }

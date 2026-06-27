@@ -1,14 +1,11 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { viteSingleFile } from 'vite-plugin-singlefile'
 
 export default defineConfig({
-  plugins: [svelte(), viteSingleFile()],
+  base: '/storyforge/',
+  plugins: [svelte()],
   build: {
     target: 'esnext',
-    assetsInlineLimit: 100_000_000,
-    cssCodeSplit: false,
-    rollupOptions: { output: { inlineDynamicImports: true } },
   },
   optimizeDeps: { include: ['dexie'] },
 })

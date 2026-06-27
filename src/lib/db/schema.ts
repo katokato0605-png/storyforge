@@ -39,6 +39,7 @@ export interface Idea {
   createdAt: number
   isTrash?: boolean
   deletedAt?: number
+  imageUrl?: string
 }
 
 export type LoreType = 'character' | 'world' | 'lore'
@@ -73,4 +74,13 @@ export interface TabImage {
   name: string
   dataUrl: string
   createdAt: number
+}
+
+export interface DiagramData {
+  id: string          // `${projectId}_canvas`
+  projectId: string
+  diagrams: unknown   // DiagramDef[]
+  nodes: Record<string, unknown[]>   // diagId -> DiagramNode[]
+  edges: Record<string, unknown[]>   // diagId -> DiagramEdge[]
+  updatedAt: number
 }

@@ -6,7 +6,6 @@
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import type { LoreType } from '../../lib/db/schema'
   import { characterCategories } from '../../lib/characterTemplates'
-  import ImageGallery from '../ui/ImageGallery.svelte'
 
   const loreDs = createDragSort()
   let loreOrder = $state<string[]>([])
@@ -51,9 +50,38 @@
 
   // テンプレート選択（キャラクタータブ用）
   let tplOpen = $state(false)
+  let tplType = $state<'maker' | 'sheet' | null>(null)
   let tplSearch = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
   let tplSelected = $state<Record<string, string>>({ backbone: '', looks: '', personality: '' })
   let tplPickerOpen = $state<string | null>(null)
+
+  const CHARACTER_SHEET_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━
+キャラクターシート
+━━━━━━━━━━━━━━━━━━━━
+
+【基本情報】
+名前：未記入
+年齢・性別：未記入
+背景：未記入
+
+【内面・心理】
+日常的な欲求：未記入
+表向きの欲求：未記入
+本音の欲求：未記入
+恐れていること：未記入
+欠如・弱点：未記入
+
+【能力・戦闘】
+特異体質：未記入
+説明：未記入
+制約：未記入
+━━━━━━━━━━━━━━━━━━━━`
+
+  function toggleTpl() {
+    tplOpen = !tplOpen
+    tplType = null
+    tplPickerOpen = null
+  }
 
   function tplFilteredItems(key: string) {
     const q = tplSearch[key].trim().toLowerCase()
@@ -85,16 +113,18 @@
     tplPickerOpen = null
   }
 
+  function insertSheet(targetContent: string, setter: (v: string) => void) {
+    const sep = targetContent.trim() ? '\n\n' : ''
+    setter(targetContent + sep + CHARACTER_SHEET_TEMPLATE)
+    tplOpen = false
+    tplType = null
+  }
+
   onMount(() => {
     const pid = projectStore.currentProjectId
     if (pid) loreStore.load(pid)
   })
 
-  $effect(() => {
-    // タブ切り替え時にフィルタリセット
-    activeTab
-    filterTag = ''
-  })
 
   const activeTypes = $derived<LoreType[]>(
     activeTab === 'world_lore' ? ['world', 'lore'] : [activeTab as LoreType]
@@ -200,7 +230,7 @@
         <button
           class="lore-tab-btn"
           class:active={activeTab === t.id}
-          onclick={() => { activeTab = t.id; adding = false; resetAddForm() }}
+          onclick={() => { activeTab = t.id; adding = false; filterTag = ''; resetAddForm() }}
         >
           <span class="lt-icon">{t.icon}</span>
           {t.label}
@@ -229,46 +259,53 @@
         ></textarea>
         {#if activeTab === 'character'}
           <div class="tpl-section">
-            <button class="tpl-toggle" onclick={() => { tplOpen = !tplOpen; tplPickerOpen = null }}>
+            <button class="tpl-toggle" onclick={toggleTpl}>
               🎭 テンプレートから追加 {tplOpen ? '▲' : '▼'}
             </button>
             {#if tplOpen}
               <div class="tpl-panel">
-                {#each characterCategories as cat}
-                  <div class="tpl-row">
-                    <span class="tpl-cat">{cat.icon} {cat.label}</span>
-                    <button
-                      class="tpl-val-btn"
-                      class:selected={!!tplSelected[cat.key]}
-                      onclick={() => { tplPickerOpen = tplPickerOpen === cat.key ? null : cat.key; tplSearch[cat.key] = '' }}
-                    >{tplSelected[cat.key] || '選択…'}</button>
-                    {#if tplSelected[cat.key]}
-                      <button class="tpl-clear" onclick={() => tplSelected[cat.key] = ''} aria-label="クリア">×</button>
-                    {/if}
+                {#if tplType === null}
+                  <div class="tpl-type-menu">
+                    <button class="tpl-type-btn" onclick={() => tplType = 'maker'}>🎲 キャラクターメーカー</button>
+                    <button class="tpl-type-btn" onclick={() => insertSheet(newContent, v => newContent = v)}>📋 キャラクターシート</button>
                   </div>
-                  {#if tplPickerOpen === cat.key}
-                    <div class="tpl-picker">
-                      <input class="fi tpl-search" placeholder="絞り込み…" value={tplSearch[cat.key]}
-                        oninput={e => tplSearch[cat.key] = (e.target as HTMLInputElement).value} autofocus />
-                      <div class="tpl-list">
-                        {#each tplFilteredItems(cat.key) as item}
-                          <button class="tpl-item" class:current={tplSelected[cat.key] === item}
-                            onclick={() => { tplSelected[cat.key] = item; tplPickerOpen = null }}>
-                            {item}
-                          </button>
-                        {/each}
-                      </div>
+                {:else if tplType === 'maker'}
+                  {#each characterCategories as cat}
+                    <div class="tpl-row">
+                      <span class="tpl-cat">{cat.icon} {cat.label}</span>
+                      <button
+                        class="tpl-val-btn"
+                        class:selected={!!tplSelected[cat.key]}
+                        onclick={() => { tplPickerOpen = tplPickerOpen === cat.key ? null : cat.key; tplSearch[cat.key] = '' }}
+                      >{tplSelected[cat.key] || '選択…'}</button>
+                      {#if tplSelected[cat.key]}
+                        <button class="tpl-clear" onclick={() => tplSelected[cat.key] = ''} aria-label="クリア">×</button>
+                      {/if}
                     </div>
-                  {/if}
-                {/each}
-                <div class="tpl-actions">
-                  <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
-                  <button class="btn btn-ghost btn-sm tpl-insert-btn"
-                    onclick={() => tplInsert(newContent, v => newContent = v)}
-                    disabled={!Object.values(tplSelected).some(Boolean)}>
-                    ＋ 内容に挿入
-                  </button>
-                </div>
+                    {#if tplPickerOpen === cat.key}
+                      <div class="tpl-picker">
+                        <input class="fi tpl-search" placeholder="絞り込み…" value={tplSearch[cat.key]}
+                          oninput={e => tplSearch[cat.key] = (e.target as HTMLInputElement).value} autofocus />
+                        <div class="tpl-list">
+                          {#each tplFilteredItems(cat.key) as item}
+                            <button class="tpl-item" class:current={tplSelected[cat.key] === item}
+                              onclick={() => { tplSelected[cat.key] = item; tplPickerOpen = null }}>
+                              {item}
+                            </button>
+                          {/each}
+                        </div>
+                      </div>
+                    {/if}
+                  {/each}
+                  <div class="tpl-actions">
+                    <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
+                    <button class="btn btn-ghost btn-sm tpl-insert-btn"
+                      onclick={() => tplInsert(newContent, v => newContent = v)}
+                      disabled={!Object.values(tplSelected).some(Boolean)}>
+                      ＋ 内容に挿入
+                    </button>
+                  </div>
+                {/if}
               </div>
             {/if}
           </div>
@@ -328,7 +365,6 @@
         {/each}
       {/if}
     </div>
-    <ImageGallery projectId={projectStore.currentProjectId} tabId="lore" />
   </div>
 {/if}
 
@@ -360,46 +396,53 @@
       </div>
       {#if activeTab === 'character'}
         <div class="fs-tpl">
-          <button class="tpl-toggle" onclick={() => { tplOpen = !tplOpen; tplPickerOpen = null }}>
+          <button class="tpl-toggle" onclick={toggleTpl}>
             🎭 テンプレートから追加 {tplOpen ? '▲' : '▼'}
           </button>
           {#if tplOpen}
             <div class="tpl-panel">
-              {#each characterCategories as cat}
-                <div class="tpl-row">
-                  <span class="tpl-cat">{cat.icon} {cat.label}</span>
-                  <button
-                    class="tpl-val-btn"
-                    class:selected={!!tplSelected[cat.key]}
-                    onclick={() => { tplPickerOpen = tplPickerOpen === cat.key ? null : cat.key; tplSearch[cat.key] = '' }}
-                  >{tplSelected[cat.key] || '選択…'}</button>
-                  {#if tplSelected[cat.key]}
-                    <button class="tpl-clear" onclick={() => tplSelected[cat.key] = ''} aria-label="クリア">×</button>
-                  {/if}
+              {#if tplType === null}
+                <div class="tpl-type-menu">
+                  <button class="tpl-type-btn" onclick={() => tplType = 'maker'}>🎲 キャラクターメーカー</button>
+                  <button class="tpl-type-btn" onclick={() => insertSheet(editContent, v => editContent = v)}>📋 キャラクターシート</button>
                 </div>
-                {#if tplPickerOpen === cat.key}
-                  <div class="tpl-picker">
-                    <input class="fi tpl-search" placeholder="絞り込み…" value={tplSearch[cat.key]}
-                      oninput={e => tplSearch[cat.key] = (e.target as HTMLInputElement).value} autofocus />
-                    <div class="tpl-list">
-                      {#each tplFilteredItems(cat.key) as item}
-                        <button class="tpl-item" class:current={tplSelected[cat.key] === item}
-                          onclick={() => { tplSelected[cat.key] = item; tplPickerOpen = null }}>
-                          {item}
-                        </button>
-                      {/each}
-                    </div>
+              {:else if tplType === 'maker'}
+                {#each characterCategories as cat}
+                  <div class="tpl-row">
+                    <span class="tpl-cat">{cat.icon} {cat.label}</span>
+                    <button
+                      class="tpl-val-btn"
+                      class:selected={!!tplSelected[cat.key]}
+                      onclick={() => { tplPickerOpen = tplPickerOpen === cat.key ? null : cat.key; tplSearch[cat.key] = '' }}
+                    >{tplSelected[cat.key] || '選択…'}</button>
+                    {#if tplSelected[cat.key]}
+                      <button class="tpl-clear" onclick={() => tplSelected[cat.key] = ''} aria-label="クリア">×</button>
+                    {/if}
                   </div>
-                {/if}
-              {/each}
-              <div class="tpl-actions">
-                <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
-                <button class="btn btn-ghost btn-sm tpl-insert-btn"
-                  onclick={() => tplInsert(editContent, v => editContent = v)}
-                  disabled={!Object.values(tplSelected).some(Boolean)}>
-                  ＋ 内容に挿入
-                </button>
-              </div>
+                  {#if tplPickerOpen === cat.key}
+                    <div class="tpl-picker">
+                      <input class="fi tpl-search" placeholder="絞り込み…" value={tplSearch[cat.key]}
+                        oninput={e => tplSearch[cat.key] = (e.target as HTMLInputElement).value} autofocus />
+                      <div class="tpl-list">
+                        {#each tplFilteredItems(cat.key) as item}
+                          <button class="tpl-item" class:current={tplSelected[cat.key] === item}
+                            onclick={() => { tplSelected[cat.key] = item; tplPickerOpen = null }}>
+                            {item}
+                          </button>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
+                {/each}
+                <div class="tpl-actions">
+                  <button class="btn-tpl-gen" onclick={tplGenerate}>🎲 ランダム生成</button>
+                  <button class="btn btn-ghost btn-sm tpl-insert-btn"
+                    onclick={() => tplInsert(editContent, v => editContent = v)}
+                    disabled={!Object.values(tplSelected).some(Boolean)}>
+                    ＋ 内容に挿入
+                  </button>
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -471,6 +514,9 @@
   .tpl-toggle   { background: none; border: 1px dashed var(--border); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; color: var(--muted); text-align: left; font-family: inherit; transition: .15s }
   .tpl-toggle:hover { color: var(--text); border-color: var(--accent) }
   .tpl-panel    { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 6px; display: flex; flex-direction: column; gap: 8px }
+  .tpl-type-menu { display: flex; flex-direction: column; gap: 6px }
+  .tpl-type-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; padding: 10px 14px; color: var(--text); text-align: left; font-family: inherit; transition: .15s }
+  .tpl-type-btn:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)) }
   .tpl-row      { display: flex; align-items: center; gap: 8px }
   .tpl-cat      { font-size: 12px; font-weight: 600; width: 90px; flex-shrink: 0 }
   .tpl-val-btn  { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--muted); cursor: pointer; text-align: left; font-family: inherit; transition: .15s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }

@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { ideaStore } from '../../lib/stores/ideaStore.svelte'
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
+  import { PARADIGM_TABLE_HTML } from '../../lib/templates/paradigmTable'
 
   const ideaDs = createDragSort()
   let ideaOrder = $state<string[]>([])
 
-  $effect(() => {
-    if (ideaStore.status !== 'ready') return
+  onMount(() => {
     try {
       const raw = localStorage.getItem('sf_idea_order')
       ideaOrder = raw ? JSON.parse(raw) : []
@@ -24,6 +24,10 @@
   }
 
   const TEMPLATES_LIST = [
+    {
+      label: '物語パラダイム表（図）',
+      content: PARADIGM_TABLE_HTML,
+    },
     {
       label: '物語力学：感情変位と達成率',
       content: `物語力学：連動する感情変位と達成率
@@ -679,6 +683,22 @@
     },
   ]
 
+  const isInProject = $derived(!!projectStore.currentProjectId)
+
+  function isDiagram(content: string) {
+    return content.trimStart().startsWith('<table')
+  }
+
+  function diagramPreview(content: string) {
+    return content.replace(/contenteditable="true"/g, 'contenteditable="false"')
+  }
+
+  function toggleScene(tags: string, set: (v: string) => void) {
+    const arr = tags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
+    const has = arr.includes('書きたいシーン')
+    set(has ? arr.filter(t => t !== '書きたいシーン').join(', ') : [...arr, '書きたいシーン'].join(', '))
+  }
+
   let showTemplateMenu = $state(false)
   let filterTag = $state('')
   let newTitle = $state('')
@@ -690,26 +710,60 @@
   let editTitle = $state('')
   let editContent = $state('')
   let editTags = $state('')
+  let editImageUrl = $state<string | undefined>(undefined)
+  let viewImageUrl = $state<string | null>(null)
+  let imgFileInput: HTMLInputElement
+  let diagramRef = $state<HTMLElement | null>(null)
+  let newDiagramRef = $state<HTMLElement | null>(null)
 
-  function startEdit(idea: { id: string; title: string; content: string; tags: string[] }) {
+  $effect(() => {
+    // editId の変化時のみ innerHTML を初期化（editContent の変化で再実行しない）
+    editId
+    untrack(() => {
+      if (diagramRef && isDiagram(editContent)) {
+        diagramRef.innerHTML = editContent
+      }
+    })
+  })
+
+  $effect(() => {
+    // newDiagramRef が DOM にバインドされたタイミングで innerHTML を設定
+    if (newDiagramRef && isDiagram(untrack(() => newContent))) {
+      newDiagramRef.innerHTML = untrack(() => newContent)
+    }
+  })
+
+  function startEdit(idea: { id: string; title: string; content: string; tags: string[]; imageUrl?: string }) {
     editId = idea.id
     editTitle = idea.title ?? ''
     editContent = idea.content
     editTags = idea.tags.join(', ')
+    editImageUrl = idea.imageUrl
   }
 
   async function saveEdit() {
     if (!editId) return
+    const content = isDiagram(editContent) && diagramRef
+      ? diagramRef.innerHTML
+      : editContent.trim()
     const tags = editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
     const linkedProjectId = matchedProject?.id ?? null
-    await ideaStore.update(editId, { title: editTitle.trim(), content: editContent.trim(), tags, linkedProjectId })
+    await ideaStore.update(editId, { title: editTitle.trim(), content, tags, linkedProjectId, imageUrl: editImageUrl })
     editId = null
   }
 
   function handleEditKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit()
     if (e.key === 'Escape') editId = null
+  }
+
+  function handleImageFile(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { editImageUrl = reader.result as string }
+    reader.readAsDataURL(file)
   }
 
   function useTemplate(label: string, content: string) {
@@ -751,7 +805,10 @@
     const tags = newTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean)
     const matchedProject = projectStore.projects.find(p => tags.includes(p.title))
     const linkedProjectId = matchedProject ? matchedProject.id : (projectStore.currentProjectId ?? null)
-    await ideaStore.create(newTitle.trim(), newContent.trim(), tags, linkedProjectId)
+    const content = isDiagram(newContent) && newDiagramRef
+      ? newDiagramRef.innerHTML
+      : newContent.trim()
+    await ideaStore.create(newTitle.trim(), content, tags, linkedProjectId)
     newTitle = ''
     newContent = ''
     newTags = ''
@@ -798,7 +855,7 @@
 </script>
 
 <datalist id="idea-tag-suggestions">
-  <option value="書きたいシーン"></option>
+  {#if isInProject}<option value="書きたいシーン"></option>{/if}
   {#each projectStore.projects as p}
     <option value={p.title}></option>
   {/each}
@@ -811,6 +868,13 @@
   <div class="tab-header">
     <h2 class="tab-title">💡 アイデアVault</h2>
     <div class="header-actions">
+      {#if isInProject}
+        <button
+          class="btn btn-sm scene-filter-btn"
+          class:active={filterTag === '書きたいシーン'}
+          onclick={() => filterTag = filterTag === '書きたいシーン' ? '' : '書きたいシーン'}
+        >📝 書きたいシーン</button>
+      {/if}
       {#if allTags.length > 0}
         <select class="fsel hdr-sel" value={filterTag} onchange={(e) => filterTag = (e.target as HTMLSelectElement).value} aria-label="タグ絞り込み">
           <option value="">すべてのタグ</option>
@@ -847,15 +911,24 @@
         placeholder="タイトル"
         aria-label="タイトル"
       />
-      <textarea
-        class="fta"
-        value={newContent}
-        oninput={(e) => newContent = (e.target as HTMLTextAreaElement).value}
-        onkeydown={handleAddKeydown}
-        placeholder="詳細（任意）… (Ctrl+Enter で保存)"
-        rows="3"
-        aria-label="詳細"
-      ></textarea>
+      {#if isDiagram(newContent)}
+        <div
+          class="diagram-editor"
+          bind:this={newDiagramRef}
+          role="region"
+          aria-label="パラダイム図（編集可能）"
+        ></div>
+      {:else}
+        <textarea
+          class="fta"
+          value={newContent}
+          oninput={(e) => newContent = (e.target as HTMLTextAreaElement).value}
+          onkeydown={handleAddKeydown}
+          placeholder="詳細（任意）… (Ctrl+Enter で保存)"
+          rows="3"
+          aria-label="詳細"
+        ></textarea>
+      {/if}
       <div class="add-row">
         <input
           class="fi"
@@ -865,6 +938,15 @@
           placeholder="タグ（カンマ区切り）"
           aria-label="タグ"
         />
+        {#if isInProject}
+          {@const hasScene = newTags.split(/[,，\s]+/).map(t => t.trim()).includes('書きたいシーン')}
+          <button
+            class="btn btn-sm scene-tag-btn"
+            class:active={hasScene}
+            onclick={() => toggleScene(newTags, v => newTags = v)}
+            title="書きたいシーンとしてタグ付け"
+          >📝{hasScene ? ' ✓' : ''}</button>
+        {/if}
         <button class="btn btn-primary btn-sm" onclick={addIdea} disabled={!newTitle.trim() && !newContent.trim()}>保存</button>
       </div>
     </div>
@@ -901,7 +983,11 @@
             <div class="idea-title">{idea.title}</div>
           {/if}
           {#if idea.content}
-            <p class="idea-text">{idea.content}</p>
+            {#if isDiagram(idea.content)}
+              <div class="diagram-preview">{@html diagramPreview(idea.content)}</div>
+            {:else}
+              <p class="idea-text">{idea.content}</p>
+            {/if}
           {/if}
           {#if idea.tags.length > 0}
             <div class="tags">
@@ -915,6 +1001,10 @@
                 >{tag}{#if proj} ↗{/if}</span>
               {/each}
             </div>
+          {/if}
+          {#if idea.imageUrl}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <img class="card-thumb" src={idea.imageUrl} alt="添付画像" onclick={(e) => { e.stopPropagation(); viewImageUrl = idea.imageUrl! }} />
           {/if}
         </div>
       {/each}
@@ -939,14 +1029,36 @@
         <button class="iBtn fs-close" onclick={() => editId = null} aria-label="閉じる">✕</button>
       </div>
       <div class="fs-body">
-        <textarea
-          class="fta fs-textarea"
-          value={editContent}
-          oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
-          onkeydown={handleEditKeydown}
-          placeholder="詳細（Ctrl+Enter で保存）"
-          aria-label="詳細"
-        ></textarea>
+        {#if isDiagram(editContent)}
+          {#key editId}
+            <div
+              class="diagram-editor"
+              bind:this={diagramRef}
+              role="region"
+              aria-label="パラダイム図（編集可能）"
+            ></div>
+          {/key}
+        {:else}
+          <textarea
+            class="fta fs-textarea"
+            value={editContent}
+            oninput={(e) => editContent = (e.target as HTMLTextAreaElement).value}
+            onkeydown={handleEditKeydown}
+            placeholder="詳細（Ctrl+Enter で保存）"
+            aria-label="詳細"
+          ></textarea>
+        {/if}
+        <div class="img-section">
+          {#if editImageUrl}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div class="img-thumb-wrap">
+              <img class="img-thumb" src={editImageUrl} alt="添付画像" onclick={() => viewImageUrl = editImageUrl!} />
+              <button class="img-del-btn" onclick={() => editImageUrl = undefined} aria-label="画像を削除">✕</button>
+            </div>
+          {/if}
+          <button class="btn btn-ghost btn-sm img-add-btn" onclick={() => imgFileInput.click()}>🖼 画像{editImageUrl ? '変更' : '追加'}</button>
+          <input bind:this={imgFileInput} type="file" accept="image/*" style="display:none" onchange={handleImageFile} />
+        </div>
       </div>
       <div class="fs-footer">
         <input
@@ -957,7 +1069,14 @@
           placeholder="タグ（カンマ区切り）"
           aria-label="タグ"
         />
-        {#if projectStore.currentProjectId}
+        {#if isInProject}
+          {@const hasScene = editTags.split(/[,，\s]+/).map(t => t.trim()).includes('書きたいシーン')}
+          <button
+            class="btn btn-sm scene-tag-btn"
+            class:active={hasScene}
+            onclick={() => toggleScene(editTags, v => editTags = v)}
+            title="書きたいシーンとしてタグ付け"
+          >📝 書きたいシーン{hasScene ? ' ✓' : ''}</button>
           {@const currentProject = projectStore.projects.find(p => p.id === projectStore.currentProjectId)}
           {@const linked = !!currentProject && editTags.split(/[,，\s]+/).map(t => t.trim()).filter(Boolean).includes(currentProject.title)}
           <button class="btn btn-ghost btn-sm" onclick={() => linkToggle(editId!, linked)} title={linked ? 'リンク解除' : 'この作品にリンク'}>
@@ -968,6 +1087,14 @@
         <button class="btn btn-primary btn-sm" onclick={saveEdit}>保存</button>
       </div>
     </div>
+  </div>
+{/if}
+
+{#if viewImageUrl}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="img-viewer-overlay" onclick={() => viewImageUrl = null}>
+    <img class="img-viewer-img" src={viewImageUrl} alt="拡大表示" onclick={(e) => e.stopPropagation()} />
+    <button class="img-viewer-close" onclick={() => viewImageUrl = null} aria-label="閉じる">✕</button>
   </div>
 {/if}
 
@@ -1003,11 +1130,93 @@
   .fs-tags-input { flex: 1; min-width: 120px; font-size: 13px }
   .tag-linked  { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); cursor: pointer }
   .tag-linked:hover { background: color-mix(in srgb, var(--accent) 35%, transparent) }
+  .scene-filter-btn { border: 1px solid var(--border); color: var(--muted); background: none }
+  .scene-filter-btn:hover { color: var(--text); border-color: var(--accent) }
+  .scene-filter-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent) }
+  .scene-tag-btn { border: 1px solid var(--border); color: var(--muted); background: none; flex-shrink: 0 }
+  .scene-tag-btn:hover { border-color: var(--accent); color: var(--accent) }
+  .scene-tag-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent) }
   .tmpl-wrap   { position: relative }
   .tmpl-backdrop { position: fixed; inset: 0; z-index: 10 }
   .tmpl-menu   { position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 20; min-width: 200px; overflow: hidden }
   .tmpl-item   { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text); font-family: inherit }
   .tmpl-item:hover { background: var(--surface2) }
+
+  .img-section     { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 10px; flex-wrap: wrap }
+  .img-thumb-wrap  { position: relative; display: inline-flex }
+  .img-thumb       { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: pointer }
+  .img-thumb:hover { opacity: .85 }
+  .img-del-btn     { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted) }
+  .img-del-btn:hover { color: var(--danger, #e55) }
+  .img-add-btn     { flex-shrink: 0 }
+  .card-thumb      { display: block; width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; margin-top: 8px; cursor: pointer }
+  .img-viewer-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; padding: 24px }
+  .img-viewer-img  { max-width: 100%; max-height: 90vh; border-radius: 8px; object-fit: contain }
+  .img-viewer-close { position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center }
+  .img-viewer-close:hover { background: rgba(255,255,255,.3) }
+
+  .diagram-preview { overflow: auto; max-height: 200px; margin-top: 4px; pointer-events: none }
+  .diagram-editor  { flex: 1; overflow: auto; min-height: 0 }
+
+  :global(.sf-paradigm-table) {
+    border-collapse: collapse;
+    font-size: 11px;
+    width: 100%;
+    min-width: 540px;
+    table-layout: auto;
+  }
+  :global(.sf-paradigm-table th) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 5px 7px;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  :global(.sf-paradigm-table td) {
+    border: 1px solid var(--border);
+    padding: 4px 7px;
+    vertical-align: middle;
+    color: var(--text);
+  }
+  :global(.sf-part-cell) {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  :global(.sf-time-cell) {
+    background: var(--surface2);
+    text-align: center;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  :global(.sf-func-cell) {
+    background: color-mix(in srgb, var(--surface2) 60%, var(--surface));
+    text-align: center;
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+  :global(.sf-scene-cell) {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  :global(.sf-edit-cell) {
+    background: var(--surface);
+    min-width: 120px;
+    outline: none;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 4px 7px;
+    cursor: text;
+  }
+  :global(.sf-edit-cell[contenteditable="true"]:focus) {
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    outline: 1px solid var(--accent);
+  }
+  :global(.sf-sub) { font-size: 9.5px; font-weight: 400; display: block }
 
 </style>
 

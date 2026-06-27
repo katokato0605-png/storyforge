@@ -146,12 +146,12 @@
     else save(next)
   }
 
-  function cancelEdit() {
+  async function cancelEdit() {
     clearTimeout(saveTimer)
     if (overlaySnapshot && overlayId) {
       const restored = beats.map(b => b.id === overlayId ? overlaySnapshot! : b)
       beats = restored
-      save(restored)
+      await save(restored)
     }
     overlayId = null
     overlaySnapshot = null

@@ -45,6 +45,13 @@
       showToast('バックアップに失敗しました', true)
     }
   }
+
+  async function handleSyncNow() {
+    if (!authStore.user) { appStore.openModal('sync'); return }
+    await autoSyncStore.syncNow(authStore.user.uid)
+    if (autoSyncStore.status === 'ok') showToast('同期しました ✓')
+    else showToast(autoSyncStore.errorMessage ?? '同期に失敗しました', true)
+  }
 </script>
 
 <header id="hd">
@@ -81,6 +88,16 @@
         title={fsaStore.active ? 'ファイル保存モード ON（クリックで無効化）' : 'ファイル保存モードを有効にする'}
         aria-label="ファイル保存モード"
       >{fsaStore.active ? '📂' : '📁'}</button>
+    {/if}
+    {#if authStore.user}
+      <button
+        class="iBtn sync-now-btn"
+        class:sync-ing={autoSyncStore.status === 'syncing'}
+        onclick={handleSyncNow}
+        disabled={autoSyncStore.status === 'syncing'}
+        title="今すぐ同期（このデバイスの内容をすべての端末に反映）"
+        aria-label="今すぐ同期"
+      >{autoSyncStore.status === 'syncing' ? '⟳' : '📤'}</button>
     {/if}
     <button
       class="iBtn sync-btn"
@@ -122,5 +139,7 @@
   .sync-ok { color: #4caf50 !important }
   .sync-err { color: #f44336 !important }
   .sync-ing { animation: spin 1s linear infinite }
+  .sync-now-btn { font-size: 14px }
+  .sync-now-btn:disabled { opacity: .5; cursor: not-allowed }
   @keyframes spin { to { transform: rotate(360deg) } }
 </style>

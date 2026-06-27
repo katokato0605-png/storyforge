@@ -7,6 +7,7 @@
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import ImageGallery from '../ui/ImageGallery.svelte'
+  import { appStore } from '../../lib/stores/appStore.svelte'
   import { db } from '../../lib/db/database'
 
   const epDs = createDragSort()
@@ -51,45 +52,74 @@
     beats: ChapterBeat[]
   }
 
-  interface NameData {
+  interface NameDataV1 {
     version: 1
     episodes: Episode[]
     chapters: Chapter[]
   }
 
+  interface NameDataV2 {
+    version: 2
+    episodes: Episode[]
+    structureChapters: Record<string, Chapter[]>
+  }
+
+  interface NameData {
+    version: 3
+    episodes: Episode[]
+    chapters: Chapter[]
+  }
+
   // ---- Templates ----
-  const CHAPTER_TEMPLATES = {
+  const CHAPTER_TEMPLATES: Record<string, { label: string; beats: { stage: string; title: string; hint: string }[] }> = {
     three_act: {
       label: '三幕構成（8ビート）',
       beats: [
-        { stage: '第一幕', title: '日常世界',      hint: '主人公の普段の生活・性格・欲求を描く。' },
-        { stage: '第一幕', title: 'きっかけ',      hint: '主人公の日常を揺るがす出来事が起きる。' },
-        { stage: '第一幕', title: '決意',          hint: '主人公が「行動する」と決める瞬間。' },
-        { stage: '第二幕', title: '新世界へ',      hint: '主人公が未知の環境・状況に飛び込む。' },
-        { stage: '第二幕', title: '中間転換点',    hint: '物語の折り返し地点。' },
-        { stage: '第二幕', title: '最大の危機',    hint: '主人公がどん底に落ちる瞬間。' },
+        { stage: '第一幕', title: '日常世界',       hint: '主人公の普段の生活・性格・欲求を描く。' },
+        { stage: '第一幕', title: 'きっかけ',       hint: '主人公の日常を揺るがす出来事が起きる。' },
+        { stage: '第一幕', title: '決意',           hint: '主人公が「行動する」と決める瞬間。' },
+        { stage: '第二幕', title: '新世界へ',       hint: '主人公が未知の環境・状況に飛び込む。' },
+        { stage: '第二幕', title: '中間転換点',     hint: '物語の折り返し地点。' },
+        { stage: '第二幕', title: '最大の危機',     hint: '主人公がどん底に落ちる瞬間。' },
         { stage: '第三幕', title: 'クライマックス', hint: '物語の頂点。' },
-        { stage: '第三幕', title: '解決',          hint: '戦いの後の世界を描く。' },
+        { stage: '第三幕', title: '解決',           hint: '戦いの後の世界を描く。' },
       ],
     },
     heros_journey: {
       label: 'ヒーローズジャーニー（12段階）',
       beats: [
-        { stage: '出発',           title: '日常世界',       hint: '冒険前の主人公の普通の生活。' },
-        { stage: '出発',           title: '冒険への召喚',   hint: '主人公に使命・問題・誘いが訪れる。' },
-        { stage: '出発',           title: '召喚の拒否',     hint: '主人公が恐れや義務感から冒険を断る。' },
-        { stage: '出発',           title: '師との出会い',   hint: '主人公を導く存在が現れ、旅への準備が整う。' },
-        { stage: '出発',           title: '第一関門突破',   hint: '日常世界を離れ、未知の領域に踏み込む。' },
+        { stage: '出発',            title: '日常世界',         hint: '冒険前の主人公の普通の生活。' },
+        { stage: '出発',            title: '冒険への召喚',     hint: '主人公に使命・問題・誘いが訪れる。' },
+        { stage: '出発',            title: '召喚の拒否',       hint: '主人公が恐れや義務感から冒険を断る。' },
+        { stage: '出発',            title: '師との出会い',     hint: '主人公を導く存在が現れ、旅への準備が整う。' },
+        { stage: '出発',            title: '第一関門突破',     hint: '日常世界を離れ、未知の領域に踏み込む。' },
         { stage: 'イニシエーション', title: 'テスト・仲間・敵', hint: '新しい世界でのルールを学ぶ。' },
-        { stage: 'イニシエーション', title: '最深部への接近', hint: '最大の試練が待つ場所へ近づく。' },
-        { stage: 'イニシエーション', title: '最大の試練',   hint: '主人公が「死」に最も近づく瞬間。' },
-        { stage: 'イニシエーション', title: '報酬',         hint: '試練を乗り越えた主人公が宝を手に入れる。' },
-        { stage: '帰還',           title: '帰路',           hint: '宝を持って日常世界に戻ろうとする。' },
-        { stage: '帰還',           title: '復活',           hint: '最後の浄化・試練。' },
-        { stage: '帰還',           title: '宝を持っての帰還', hint: '変容した主人公が日常世界に戻る。' },
+        { stage: 'イニシエーション', title: '最深部への接近',  hint: '最大の試練が待つ場所へ近づく。' },
+        { stage: 'イニシエーション', title: '最大の試練',      hint: '主人公が「死」に最も近づく瞬間。' },
+        { stage: 'イニシエーション', title: '報酬',            hint: '試練を乗り越えた主人公が宝を手に入れる。' },
+        { stage: '帰還',            title: '帰路',             hint: '宝を持って日常世界に戻ろうとする。' },
+        { stage: '帰還',            title: '復活',             hint: '最後の浄化・試練。' },
+        { stage: '帰還',            title: '宝を持っての帰還', hint: '変容した主人公が日常世界に戻る。' },
       ],
     },
-  } as const
+    kishoten: {
+      label: '起承転結（4ビート）',
+      beats: [
+        { stage: '起', title: '導入',   hint: '物語の世界観・登場人物・状況を提示する。' },
+        { stage: '承', title: '展開',   hint: '事件や問題が発生し、物語が動き出す。' },
+        { stage: '転', title: '転換',   hint: '予想外の展開や逆転が起きる。' },
+        { stage: '結', title: 'まとめ', hint: '物語が締めくくられ、結末を迎える。' },
+      ],
+    },
+    johakyuu: {
+      label: '序破急（3ビート）',
+      beats: [
+        { stage: '序', title: '序',   hint: 'ゆっくりとした導入。世界と人物を丁寧に描く。' },
+        { stage: '破', title: '破',   hint: '変化と発展。展開が加速し、葛藤が深まる。' },
+        { stage: '急', title: '急',   hint: '急激な加速とクライマックス。一気に結末へ。' },
+      ],
+    },
+  }
 
   // ---- State ----
   let subTab = $state<'episode' | 'chapter' | 'idea'>('chapter')
@@ -135,7 +165,6 @@
   let episodes = $state<Episode[]>([])
   let selectedEpisodeId = $state<string | null>(null)
   let sceneEditId = $state<string | null>(null)
-  let showGroupColors = $state(false)
 
   // Chapter sub-tab
   let chapters = $state<Chapter[]>([])
@@ -143,6 +172,10 @@
   let showTmplMenu = $state(false)
   let beatEditId = $state<string | null>(null)
   const chapterHist = createHistory<Chapter[]>()
+
+  function setChapters(newChaps: Chapter[]) {
+    chapters = newChaps
+  }
 
   // Persistence
   let saveTimer: ReturnType<typeof setTimeout>
@@ -169,10 +202,21 @@
           // migrate from localStorage if exists
           const raw = localStorage.getItem(key)
           if (raw) {
-            const parsed: NameData = JSON.parse(raw)
-            eps = parsed.episodes ?? []
-            chs = parsed.chapters ?? []
-            db.meta.put({ key, value: { version: 1, episodes: eps, chapters: chs } })
+            const parsed = JSON.parse(raw)
+            if (parsed.version === 3) {
+              const data = parsed as NameData
+              eps = data.episodes ?? []
+              chs = data.chapters ?? []
+            } else if (parsed.version === 2) {
+              const data = parsed as NameDataV2
+              eps = data.episodes ?? []
+              chs = Object.values(data.structureChapters ?? {}).flat()
+            } else {
+              const data = parsed as NameDataV1
+              eps = data.episodes ?? []
+              chs = data.chapters ?? []
+            }
+            db.meta.put({ key, value: { version: 3, episodes: eps, chapters: chs } })
             localStorage.removeItem(key)
           }
         }
@@ -192,7 +236,7 @@
     if (!key) return
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
-      const data: NameData = { version: 1, episodes, chapters }
+      const data: NameData = { version: 3, episodes, chapters }
       db.meta.put({ key, value: data })
     }, 300)
   }
@@ -274,47 +318,65 @@
     const ch: Chapter = {
       id: nanoid(), title: '', theme: '', stateStart: '', stateEnd: '', beats: [],
     }
-    chapters = [...chapters, ch]
+    const next = [...chapters, ch]
+    setChapters(next)
     selectedChapterId = ch.id
     save()
   }
 
   function deleteChapter(id: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.filter(c => c.id !== id)
-    if (selectedChapterId === id) selectedChapterId = chapters[0]?.id ?? null
+    const next = chapters.filter(c => c.id !== id)
+    setChapters(next)
+    if (selectedChapterId === id) selectedChapterId = next[0]?.id ?? null
     save()
   }
 
   function updateChapter(id: string, patch: Partial<Omit<Chapter, 'beats'>>) {
-    chapters = chapters.map(c => c.id === id ? { ...c, ...patch } : c)
+    setChapters(chapters.map(c => c.id === id ? { ...c, ...patch } : c))
     save()
   }
 
-  function applyTemplate(key: keyof typeof CHAPTER_TEMPLATES, targetChapterId?: string) {
+  function applyTemplate(key: string, targetChapterId?: string) {
     showTmplMenu = false
+    const tmpl = CHAPTER_TEMPLATES[key]
+    if (!tmpl) return
     const chId = targetChapterId ?? selectedChapterId
     if (!chId) return
     const ch = chapters.find(c => c.id === chId)
     if (!ch) return
-    if (ch.beats.length > 0 && !confirm('既存のビートをテンプレートで上書きしますか？')) return
-    chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
-      id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
-    }))
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c)
-    save()
+    const doApply = () => {
+      chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
+      const newBeats: ChapterBeat[] = tmpl.beats.map(b => ({
+        id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
+      }))
+      setChapters(chapters.map(c => c.id === chId ? { ...c, beats: newBeats } : c))
+      save()
+    }
+    if (ch.beats.length > 0) {
+      appStore.openModal('confirm', {
+        title: 'テンプレート適用',
+        message: '既存のビートをテンプレートで上書きしますか？',
+        danger: true,
+        onConfirm: doApply,
+      })
+      return
+    }
+    doApply()
   }
 
-  function applyTemplateNewChapter(key: keyof typeof CHAPTER_TEMPLATES) {
+  function applyTemplateNewChapter(templateKey: string) {
+    const tmpl = CHAPTER_TEMPLATES[templateKey]
+    if (!tmpl) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    const newBeats: ChapterBeat[] = CHAPTER_TEMPLATES[key].beats.map(b => ({
+    const newBeats: ChapterBeat[] = tmpl.beats.map(b => ({
       id: nanoid(), stage: b.stage, title: b.title, memo: b.hint,
     }))
     const ch: Chapter = {
-      id: nanoid(), title: CHAPTER_TEMPLATES[key].label, theme: '', stateStart: '', stateEnd: '', beats: newBeats,
+      id: nanoid(), title: tmpl.label, theme: '', stateStart: '', stateEnd: '', beats: newBeats,
     }
-    chapters = [...chapters, ch]
+    const next = [...chapters, ch]
+    setChapters(next)
     selectedChapterId = ch.id
     save()
   }
@@ -322,26 +384,26 @@
   function addBeat(chId: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     const beat: ChapterBeat = { id: nanoid(), stage: '', title: '', memo: '' }
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: [...c.beats, beat] } : c)
+    setChapters(chapters.map(c => c.id === chId ? { ...c, beats: [...c.beats, beat] } : c))
     beatEditId = beat.id
     save()
   }
 
   function deleteBeat(chId: string, beatId: string) {
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.map(c => c.id === chId
+    setChapters(chapters.map(c => c.id === chId
       ? { ...c, beats: c.beats.filter(b => b.id !== beatId) }
       : c
-    )
+    ))
     if (beatEditId === beatId) beatEditId = null
     save()
   }
 
   function updateBeat(chId: string, beatId: string, patch: Partial<ChapterBeat>) {
-    chapters = chapters.map(c => c.id === chId
+    setChapters(chapters.map(c => c.id === chId
       ? { ...c, beats: c.beats.map(b => b.id === beatId ? { ...b, ...patch } : b) }
       : c
-    )
+    ))
     save()
   }
 
@@ -351,7 +413,7 @@
     const next = beatDs.drop(ch.beats, toIdx)
     if (!next) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = chapters.map(c => c.id === chId ? { ...c, beats: next } : c)
+    setChapters(chapters.map(c => c.id === chId ? { ...c, beats: next } : c))
     save()
   }
 
@@ -367,7 +429,7 @@
     const next = chDs.drop(chapters, toIdx)
     if (!next) return
     chapterHist.push(chapters.map(c => ({ ...c, beats: [...c.beats] })))
-    chapters = next
+    setChapters(next)
     if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
     save()
   }
@@ -376,7 +438,7 @@
   function chapterUndo() {
     const prev = chapterHist.undo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     if (!prev) return
-    chapters = prev
+    setChapters(prev)
     if (!prev.find(c => c.id === selectedChapterId)) selectedChapterId = prev[0]?.id ?? null
     save()
   }
@@ -384,7 +446,7 @@
   function chapterRedo() {
     const next = chapterHist.redo(chapters.map(c => ({ ...c, beats: [...c.beats] })))
     if (!next) return
-    chapters = next
+    setChapters(next)
     if (!next.find(c => c.id === selectedChapterId)) selectedChapterId = next[0]?.id ?? null
     save()
   }
@@ -442,8 +504,7 @@
               <div class="nt-empty-hint">話を追加してください</div>
             {:else}
               {#each episodes as ep, idx (ep.id)}
-                {@const linkedCh = ep.chapterId ? chapters.find(c => c.id === ep.chapterId) ?? null : null}
-                {@const linkedChIdx = linkedCh ? chapters.indexOf(linkedCh) : -1}
+                {@const linkedCh = ep.chapterId ? allChapters.find(c => c.id === ep.chapterId) ?? null : null}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                   class="nt-list-drag-row"
@@ -471,7 +532,7 @@
                     <span class="nt-ep-num">{ep.number}話</span>
                     <span class="nt-ep-title">{ep.title || '（無題）'}</span>
                     {#if linkedCh}
-                      <span class="nt-ch-tag">{linkedChIdx + 1}章</span>
+                      <span class="nt-ch-tag">{linkedCh.title || '章'}</span>
                     {:else if ep.groupName}
                       <span class="nt-ch-tag">{ep.groupName}</span>
                     {/if}
@@ -506,14 +567,13 @@
                   onchange={(e) => {
                     const chId = (e.target as HTMLSelectElement).value || null
                     const ch = chId ? chapters.find(c => c.id === chId) : null
-                    const idx = ch ? chapters.indexOf(ch) : -1
-                    const label = ch ? `${idx + 1}章${ch.title ? ` ${ch.title}` : ''}` : ''
+                    const label = ch ? (ch.title || '章') : ''
                     updateEpisode(selectedEpisode!.id, { chapterId: chId, groupName: label })
                   }}
                 >
                   <option value="">（章なし）</option>
-                  {#each chapters as ch, idx (ch.id)}
-                    <option value={ch.id}>{idx + 1}章{ch.title ? ` — ${ch.title}` : ''}</option>
+                  {#each chapters as ch (ch.id)}
+                    <option value={ch.id}>{ch.title || '（無題）'}</option>
                   {/each}
                 </select>
                 <div class="nt-color-row">
@@ -713,7 +773,7 @@
                     <div class="nt-tmpl-bg" onclick={() => showTmplMenu = false}></div>
                     <div class="nt-tmpl-menu">
                       {#each Object.entries(CHAPTER_TEMPLATES) as [key, tmpl]}
-                        <button class="nt-tmpl-item" onclick={() => applyTemplate(key as keyof typeof CHAPTER_TEMPLATES)}>{tmpl.label}</button>
+                        <button class="nt-tmpl-item" onclick={() => applyTemplate(key)}>{tmpl.label}</button>
                       {/each}
                     </div>
                   {/if}
@@ -750,6 +810,7 @@
                         {#if beat.stage}<span class="pb-stage-badge">{beat.stage}</span>{/if}
                         <span class="nt-beat-title">{beat.title || '（タイトル未設定）'}</span>
                       </div>
+                      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
                       <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
                         <button class="iBtn del" onclick={() => deleteBeat(selectedChapter!.id, beat.id)}>🗑</button>
                       </div>
@@ -793,9 +854,11 @@
               <div class="nt-ch-empty-icon">📖</div>
               <div class="nt-ch-empty-msg">章がまだありません</div>
               <div class="nt-ch-empty-actions">
-                <button class="btn btn-primary btn-sm" onclick={addChapter}>＋ 章を追加</button>
-                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('three_act')}>三幕構成で始める</button>
-                <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter('heros_journey')}>ヒーローズジャーニーで始める</button>
+                <button class="btn btn-primary btn-sm" onclick={addChapter}>＋ 空の章を追加</button>
+                <div class="nt-ch-tmpl-label">テンプレートから始める：</div>
+                {#each Object.entries(CHAPTER_TEMPLATES) as [key, tmpl]}
+                  <button class="btn btn-ghost btn-sm" onclick={() => applyTemplateNewChapter(key)}>{tmpl.label}</button>
+                {/each}
               </div>
             </div>
           {/if}
@@ -840,54 +903,61 @@
           <div class="nt-idea-list">
             {#each sceneIdeas as idea (idea.id)}
               <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-              <div class="nt-idea-card" class:editing={ideaEditId === idea.id} onclick={() => ideaEditId !== idea.id && startIdeaEdit(idea)}>
-                {#if ideaEditId === idea.id}
+              <div class="nt-idea-card" onclick={() => startIdeaEdit(idea)}>
+                <div class="nt-idea-card-top">
+                  {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
                   <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-                  <div onclick={(e) => e.stopPropagation()} style="display:contents">
-                  <input
-                    class="fi nt-idea-title-edit"
-                    bind:value={ideaEditTitle}
-                    placeholder="タイトル"
-                  />
-                  <textarea
-                    class="fta nt-idea-ta"
-                    bind:value={ideaEditContent}
-                    placeholder="内容"
-                  ></textarea>
-                  <input
-                    class="fi nt-idea-tags-input"
-                    bind:value={ideaEditTags}
-                    placeholder="タグ（カンマ区切り）"
-                  />
-                  <div class="nt-idea-form-acts">
-                    <button class="btn btn-primary btn-sm" onclick={saveIdeaEdit}>保存</button>
-                    <button class="btn btn-ghost btn-sm" onclick={() => ideaEditId = null}>キャンセル</button>
+                  <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
+                    <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
                   </div>
-                  </div>
-                {:else}
-                  <div class="nt-idea-card-top">
-                    {#if idea.title}<div class="nt-idea-title">{idea.title}</div>{/if}
-                    <div class="nt-scene-acts" onclick={(e) => e.stopPropagation()}>
-                      <button class="iBtn del" onclick={() => ideaStore.delete(idea.id)}>🗑</button>
-                    </div>
-                  </div>
-                  {#if idea.content}
-                    <div class="nt-idea-content">{idea.content}</div>
-                  {/if}
-                  <div class="nt-idea-tags">
-                    {#each idea.tags as tag}
-                      <span class="nt-tag-badge">{tag}</span>
-                    {/each}
-                  </div>
+                </div>
+                {#if idea.content}
+                  <div class="nt-idea-content">{idea.content}</div>
                 {/if}
+                <div class="nt-idea-tags">
+                  {#each idea.tags as tag}
+                    <span class="nt-tag-badge">{tag}</span>
+                  {/each}
+                </div>
               </div>
             {/each}
           </div>
         {/if}
       </div>
     {/if}
-    <ImageGallery projectId={projectStore.currentProjectId} tabId="name" />
   </div>
+
+  <!-- アイデア編集オーバーレイ -->
+  {#if ideaEditId}
+    <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+    <div class="nt-idea-overlay-bg" onclick={() => saveIdeaEdit()}></div>
+    <div class="nt-idea-overlay">
+      <div class="nt-idea-overlay-header">
+        <span class="nt-idea-overlay-title">アイデアを編集</span>
+        <button class="iBtn" onclick={() => saveIdeaEdit()}>✕</button>
+      </div>
+      <div class="nt-idea-overlay-body">
+        <input
+          class="fi nt-idea-title-edit"
+          bind:value={ideaEditTitle}
+          placeholder="タイトル（任意）"
+        />
+        <textarea
+          class="fta nt-idea-overlay-ta"
+          bind:value={ideaEditContent}
+          placeholder="内容"
+        ></textarea>
+        <input
+          class="fi nt-idea-tags-input"
+          bind:value={ideaEditTags}
+          placeholder="タグ（カンマ区切り）"
+        />
+      </div>
+      <div class="nt-idea-overlay-footer">
+        <button class="btn btn-primary" onclick={() => saveIdeaEdit()}>保存して閉じる</button>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -1036,6 +1106,7 @@
   .nt-ch-empty-icon { font-size: 36px }
   .nt-ch-empty-msg { font-size: 14px; font-weight: 600; color: var(--text) }
   .nt-ch-empty-actions { display: flex; flex-direction: column; align-items: center; gap: 8px }
+  .nt-ch-tmpl-label { font-size: 11px; color: var(--muted); margin-top: 8px }
 
   /* State row */
   .nt-state-row { display: flex; align-items: center; gap: 6px }
@@ -1083,7 +1154,32 @@
     padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer;
   }
   .nt-idea-card:hover { border-color: var(--accent) }
-  .nt-idea-card.editing { border-color: var(--accent); padding: 12px 14px; gap: 8px; cursor: default }
+
+  /* Idea edit overlay */
+  .nt-idea-overlay-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+  }
+  .nt-idea-overlay {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(600px, 95vw); max-height: 85vh;
+    background: var(--surface); border-radius: 14px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.3);
+    z-index: 101; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .nt-idea-overlay-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .nt-idea-overlay-title { font-size: 14px; font-weight: 700; color: var(--text) }
+  .nt-idea-overlay-body {
+    flex: 1; overflow-y: auto; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .nt-idea-overlay-ta { width: 100%; min-height: 200px; resize: vertical; font-size: 14px; line-height: 1.8 }
+  .nt-idea-overlay-footer {
+    padding: 12px 18px; border-top: 1px solid var(--border); flex-shrink: 0;
+    display: flex; justify-content: flex-end;
+  }
   .nt-idea-card-top { display: flex; align-items: flex-start; gap: 8px }
   .nt-idea-title { flex: 1; font-size: 14px; font-weight: 700; color: var(--text) }
   .nt-idea-title-edit { font-size: 14px; font-weight: 700 }
@@ -1105,5 +1201,7 @@
   @media (max-width: 640px) {
     .nt-left { width: 120px; min-width: 100px }
     .nt-right-header { flex-direction: column }
+    .nt-structure-bar { padding: 0 8px }
+    .nt-str-tab { padding: 8px 10px; font-size: 11px }
   }
 </style>

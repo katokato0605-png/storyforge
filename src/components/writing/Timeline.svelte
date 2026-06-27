@@ -76,7 +76,7 @@
       if (!ctrl) return
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo() }
-      if (overlayId && e.key === 'Enter') { e.preventDefault(); confirmEdit() }
+      if (overlayId && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmEdit() }
     }
     document.addEventListener('keydown', handleKeydown)
     return () => document.removeEventListener('keydown', handleKeydown)

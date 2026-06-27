@@ -52,6 +52,11 @@ const LoreEntrySchema = v.object({
   updatedAt: v.number(),
 })
 
+const MetaEntrySchema = v.object({
+  key: v.string(),
+  value: v.unknown(),
+})
+
 const ExportDataSchema = v.object({
   version: v.literal(4),
   exportedAt: v.number(),
@@ -60,6 +65,7 @@ const ExportDataSchema = v.object({
   projectNotes: v.array(ProjectNoteSchema),
   ideas: v.array(IdeaSchema),
   loreEntries: v.array(LoreEntrySchema),
+  metaEntries: v.optional(v.array(MetaEntrySchema), []),
 })
 
 // v3 (legacy) — loreEntries absent
@@ -73,21 +79,26 @@ const ExportDataSchemaV3 = v.object({
 })
 
 type ExportData = v.InferOutput<typeof ExportDataSchema>
+type MetaEntry = v.InferOutput<typeof MetaEntrySchema>
 
 // ---- public API ----
 
 export async function exportAll(): Promise<string> {
-  const [projects, chapters, projectNotes, ideas, loreEntries] = await Promise.all([
+  const [projects, chapters, projectNotes, ideas, loreEntries, allMeta] = await Promise.all([
     db.projects.toArray(),
     db.chapters.toArray(),
     db.projectNotes.toArray(),
     db.ideas.toArray(),
     db.loreEntries.toArray(),
+    db.meta.toArray(),
   ])
+  const metaEntries: MetaEntry[] = allMeta
+    .filter(m => typeof m.key === 'string' && m.key.startsWith('sf_name_'))
+    .map(m => ({ key: m.key, value: m.value }))
   const data: ExportData = {
     version: 4,
     exportedAt: Date.now(),
-    projects, chapters, projectNotes, ideas, loreEntries,
+    projects, chapters, projectNotes, ideas, loreEntries, metaEntries,
   }
   return JSON.stringify(data, null, 2)
 }
@@ -115,12 +126,13 @@ export async function importFromJSON(json: string): Promise<{ projects: number; 
   const v4 = v.safeParse(ExportDataSchema, parsed)
   if (v4.success) {
     const data = v4.output
-    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas, db.loreEntries], async () => {
+    await db.transaction('rw', [db.projects, db.chapters, db.projectNotes, db.ideas, db.loreEntries, db.meta], async () => {
       if (data.projects.length)     await db.projects.bulkPut(data.projects)
       if (data.chapters.length)     await db.chapters.bulkPut(data.chapters)
       if (data.projectNotes.length) await db.projectNotes.bulkPut(data.projectNotes)
       if (data.ideas.length)        await db.ideas.bulkPut(data.ideas)
       if (data.loreEntries.length)  await db.loreEntries.bulkPut(data.loreEntries)
+      if (data.metaEntries?.length) await db.meta.bulkPut(data.metaEntries)
     })
     return { projects: data.projects.length, chapters: data.chapters.length, lore: data.loreEntries.length }
   }

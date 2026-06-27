@@ -7,6 +7,7 @@
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
   import UndoRedoButtons from '../ui/UndoRedoButtons.svelte'
   import ImageGallery from '../ui/ImageGallery.svelte'
+  import { db } from '../../lib/db/database'
 
   const epDs = createDragSort()
   const chDs = createDragSort()
@@ -158,21 +159,32 @@
     if (!key) return
     let eps: Episode[] = []
     let chs: Chapter[] = []
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        const parsed: NameData = JSON.parse(raw)
-        eps = parsed.episodes ?? []
-        chs = parsed.chapters ?? []
+    db.meta.get(key).then(record => {
+      try {
+        if (record?.value) {
+          const parsed = record.value as NameData
+          eps = parsed.episodes ?? []
+          chs = parsed.chapters ?? []
+        } else {
+          // migrate from localStorage if exists
+          const raw = localStorage.getItem(key)
+          if (raw) {
+            const parsed: NameData = JSON.parse(raw)
+            eps = parsed.episodes ?? []
+            chs = parsed.chapters ?? []
+            db.meta.put({ key, value: { version: 1, episodes: eps, chapters: chs } })
+            localStorage.removeItem(key)
+          }
+        }
+      } catch {
+        // keep empty arrays
       }
-    } catch {
-      // keep empty arrays
-    }
-    episodes = eps
-    chapters = chs
-    selectedEpisodeId = eps[0]?.id ?? null
-    selectedChapterId = chs[0]?.id ?? null
-    loaded = true
+      episodes = eps
+      chapters = chs
+      selectedEpisodeId = eps[0]?.id ?? null
+      selectedChapterId = chs[0]?.id ?? null
+      loaded = true
+    })
   })
 
   function save() {
@@ -181,7 +193,7 @@
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       const data: NameData = { version: 1, episodes, chapters }
-      localStorage.setItem(key, JSON.stringify(data))
+      db.meta.put({ key, value: data })
     }, 300)
   }
 

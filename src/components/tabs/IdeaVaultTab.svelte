@@ -4,7 +4,7 @@
   import { projectStore } from '../../lib/stores/projectStore.svelte'
   import { appStore } from '../../lib/stores/appStore.svelte'
   import { createDragSort } from '../../lib/utils/dragSort.svelte'
-  import { PARADIGM_TABLE_HTML } from '../../lib/templates/paradigmTable'
+  import { PARADIGM_TABLE_HTML, SCENARIO_OUTLINE_TABLE_HTML } from '../../lib/templates/paradigmTable'
 
   const ideaDs = createDragSort()
   let ideaOrder = $state<string[]>([])
@@ -24,6 +24,10 @@
   }
 
   const TEMPLATES_LIST = [
+    {
+      label: 'シナリオ概略表（記入式）',
+      content: SCENARIO_OUTLINE_TABLE_HTML,
+    },
     {
       label: '物語パラダイム表（図）',
       content: PARADIGM_TABLE_HTML,
@@ -1218,6 +1222,69 @@
     outline: 1px solid var(--accent);
   }
   :global(.sf-sub) { font-size: 9.5px; font-weight: 400; display: block }
+
+  /* シナリオ概略表 */
+  :global(.sf-sc-table) { min-width: 480px }
+  :global(.sf-sc-label) {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--text);
+    width: 52px;
+  }
+  :global(.sf-sc-row) {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: var(--text);
+    width: 52px;
+  }
+  :global(.sf-sc-gaimen) {
+    background: color-mix(in srgb, #f0a030 18%, var(--surface2));
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text);
+  }
+  :global(.sf-sc-honne) {
+    background: color-mix(in srgb, #9060d0 18%, var(--surface2));
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text);
+  }
+  :global(.sf-sc-obs) {
+    background: color-mix(in srgb, #7060c0 18%, var(--surface2));
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-weight: 700;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text);
+  }
+  :global(.sf-sc-cnt) {
+    background: color-mix(in srgb, #30a090 18%, var(--surface2));
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-weight: 700;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text);
+  }
+  :global(.sf-sc-tall) {
+    min-height: 56px;
+    height: 56px;
+    vertical-align: top;
+  }
 
 </style>
 

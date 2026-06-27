@@ -1,3 +1,14 @@
+export const SCENARIO_OUTLINE_TABLE_HTML = `<table class="sf-paradigm-table sf-sc-table"><thead><tr><th class="sf-sc-label">項目</th><th colspan="2">社会的な物語</th><th>精神的な物語</th></tr></thead><tbody>
+<tr><td class="sf-sc-row">行動</td><td colspan="3" contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
+<tr><td class="sf-sc-row" rowspan="2">理由</td><td colspan="2" class="sf-sc-gaimen">外面</td><td class="sf-sc-honne">本音</td></tr>
+<tr><td contenteditable="true" class="sf-edit-cell sf-sc-tall" colspan="2"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
+<tr><td class="sf-sc-row" rowspan="2">障害</td><td class="sf-sc-obs">①誘う出来事</td><td class="sf-sc-obs">③自発的な出来事</td><td class="sf-sc-obs">⑤絶望的な出来事</td></tr>
+<tr><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
+<tr><td class="sf-sc-row" rowspan="2">対策</td><td class="sf-sc-cnt">②決断</td><td class="sf-sc-cnt">④一時決着</td><td class="sf-sc-cnt">⑥決着</td></tr>
+<tr><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td><td contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
+<tr><td class="sf-sc-row">結末</td><td colspan="3" contenteditable="true" class="sf-edit-cell sf-sc-tall"></td></tr>
+</tbody></table>`
+
 export const PARADIGM_TABLE_HTML = `<table class="sf-paradigm-table"><thead><tr><th>パート</th><th>時系列</th><th>機能</th><th>シーン</th><th>副機能（プロット）</th></tr></thead><tbody>
 <tr><td rowspan="12" class="sf-part-cell">第一幕<br><span class="sf-sub">（テーゼ・旧世界）</span></td><td rowspan="5" class="sf-time-cell">日常</td><td rowspan="3" class="sf-func-cell">OPイメージ</td><td class="sf-scene-cell">作品トーン</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
 <tr><td class="sf-scene-cell">キャラの願望</td><td contenteditable="true" class="sf-edit-cell"></td></tr>
